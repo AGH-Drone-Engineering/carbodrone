@@ -503,7 +503,7 @@
         </dynamics>
       </axis> -->
     </joint>
-    <link name="OakD-Lite/base_link">
+    <link name="x500_depth_0/OakD-Lite/base_link/StereoOV7251">
       <pose>.12 .03 .002 0 0 0</pose>
       <inertial>
         <pose>0.00358 -0.03 .014 0 0 0</pose>
@@ -539,11 +539,11 @@
     </link>
     <joint name="CameraJoint" type="fixed">
       <parent>base_link</parent>
-      <child>OakD-Lite/base_link</child>
+      <child>x500_depth_0/OakD-Lite/base_link/StereoOV7251</child>
       <pose relative_to="base_link">.12 .03 .002 0 0 0</pose>
     </joint>
 
-    <link name="bottom-cam/base_link">
+    <link name="x500_depth_0/bottom-cam/base_link/IMX214">
       <pose>0 0 -0.04 0 1.57 0</pose>
       <inertial>
         <mass>0.001</mass>
@@ -579,7 +579,7 @@
     </link>
     <joint name="bottom-cam-joint" type="fixed">
       <parent>base_link</parent>
-      <child>bottom-cam/base_link</child>
+      <child>x500_depth_0/bottom-cam/base_link/IMX214</child>
       <pose relative_to="base_link">0 0 -0.04 0 1.57 0</pose>
     </joint>
   </model>

@@ -18,7 +18,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
-            default_value='false',
+            default_value='true',
             description='Use simulation (Gazebo) clock if true'),
 
         Node(
@@ -41,6 +41,7 @@ def generate_launch_description():
             executable='odom_publisher',
             name='odom_publisher',
             output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
         ),
 
         Node(
@@ -48,18 +49,11 @@ def generate_launch_description():
             executable='parameter_bridge',
             name='parameter_bridge',
             output='screen',
-            arguments=['/depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked'],
-            remappings=[('depth_camera/points', 'depth_camera/points_gz')],
-        ),
-        Node(
-            package='carbodrone_px',
-            executable='gz_depth',
-            name='gz_depth',
-            output='screen',
-            remappings=[
-                ("pc_in", "/depth_camera/points_gz"),
-                ("pc_out", "/depth_camera/points"),
-            ]
+            arguments=[
+                '/depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            ],
+            parameters=[{'use_sim_time': use_sim_time}],
         ),
 
         Node(
@@ -72,5 +66,14 @@ def generate_launch_description():
                 '/bottom_camera',
                 '/depth_camera',
             ],
+            parameters=[{'use_sim_time': use_sim_time}],
         ),
+
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+        )
     ])
