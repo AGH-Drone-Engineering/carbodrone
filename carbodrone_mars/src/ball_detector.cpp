@@ -99,8 +99,13 @@ private:
 
         if (best_area < 0) return;
 
-        double cx = best_x;
-        double cy = best_y;
+        double xp = best_x - img.cols * 0.5;
+        double yp = best_y - img.rows * 0.5;
+
+        double bm = vehicle_position->dist_bottom * (4.5 / 8.0);
+        double xm = xp / (img.cols * 0.5) * bm;
+        double ym = yp / (img.rows * 0.5) * bm;
+
         auto radius = std::sqrt(best_area / 3.141);
 
         TransformStamped cam2target;
@@ -108,8 +113,8 @@ private:
         cam2target.child_frame_id = "landing_target";
 
         cam2target.transform.translation.x = vehicle_position->dist_bottom;
-        cam2target.transform.translation.y = -((cx / img.cols) - 0.5);
-        cam2target.transform.translation.z = -((cy / img.rows) - 0.5);
+        cam2target.transform.translation.y = -xm;
+        cam2target.transform.translation.z = -ym;
 
         _tf_broadcaster->sendTransform(std::move(cam2target));
 
@@ -139,7 +144,7 @@ private:
             RCLCPP_WARN(this->get_logger(), "Could not get local2target transform");
         }
 
-        cv::circle(img, cv::Point(cx, cy), radius, cv::Scalar(0, 0, 255), 4);
+        cv::circle(img, cv::Point(best_x, best_y), radius, cv::Scalar(0, 0, 255), 4);
 
         cv::imshow("detector", img);
         cv::waitKey(1);
