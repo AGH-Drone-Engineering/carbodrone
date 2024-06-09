@@ -56,7 +56,7 @@ private:
         odom_out.pose.pose.orientation.y = orientation.y();
         odom_out.pose.pose.orientation.z = orientation.z();
 
-        _odom_pub->publish(odom_out);
+        _odom_pub->publish(std::move(odom_out));
 
         TransformStamped tf;
         tf.header.stamp = time;
@@ -72,7 +72,7 @@ private:
         tf.transform.rotation.y = orientation.y();
         tf.transform.rotation.z = orientation.z();
 
-        _tf_broadcaster->sendTransform(tf);
+        _tf_broadcaster->sendTransform(std::move(tf));
     }
 
     rclcpp::Publisher<Odometry>::SharedPtr _odom_pub;
