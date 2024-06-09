@@ -24,15 +24,11 @@ find_package(message_filters)
 add_executable(odom_publisher src/odom_publisher.cpp)
 ament_target_dependencies(odom_publisher rclcpp std_msgs px4_msgs sensor_msgs geometry_msgs nav_msgs px4_ros_com tf2 tf2_ros)
 
-add_executable(gz_depth src/gz_depth.cpp)
-ament_target_dependencies(gz_depth rclcpp sensor_msgs)
-
 add_executable(imu src/imu.cpp)
 ament_target_dependencies(imu rclcpp sensor_msgs px4_msgs px4_ros_com message_filters)
 
 install(TARGETS
   odom_publisher
-  gz_depth
   imu
   DESTINATION lib/${PROJECT_NAME})
 
