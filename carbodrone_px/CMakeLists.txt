@@ -26,9 +26,13 @@ ament_target_dependencies(odom_publisher rclcpp std_msgs px4_msgs sensor_msgs ge
 add_executable(gz_depth src/gz_depth.cpp)
 ament_target_dependencies(gz_depth rclcpp sensor_msgs)
 
+add_executable(imu src/imu.cpp)
+ament_target_dependencies(imu rclcpp sensor_msgs px4_msgs px4_ros_com)
+
 install(TARGETS
   odom_publisher
   gz_depth
+  imu
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

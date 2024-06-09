@@ -81,4 +81,12 @@ def generate_launch_description():
             cmd=['QGroundControl'],
             name='QGroundControl',
         ),
+
+        Node(
+            package='carbodrone_px',
+            executable='imu',
+            name='imu',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
     ])
