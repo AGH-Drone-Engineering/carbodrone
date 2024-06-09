@@ -1,11 +1,18 @@
 #include "Eigen/Geometry"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/qos.hpp"
 #include "px4_ros_com/frame_transforms.h"
+
+#include "message_filters/time_synchronizer.h"
+#include "message_filters/subscriber.h"
+#include "message_filters/sync_policies/latest_time.h"
 
 #include "sensor_msgs/msg/imu.hpp"
 #include "px4_msgs/msg/sensor_combined.hpp"
+#include "px4_msgs/msg/vehicle_attitude.hpp"
 
 using std::placeholders::_1;
+using std::placeholders::_2;
 using namespace px4_msgs::msg;
 using namespace sensor_msgs::msg;
 using Eigen::Vector3d;
@@ -20,23 +27,38 @@ public:
     ImuNode()
         : Node("imu")
     {
+        rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
+        _attitude_sub = std::make_shared<message_filters::Subscriber<VehicleAttitude>>(
+                          this,
+                          "/fmu/out/vehicle_attitude",
+                          qos);
+        _sensor_sub = std::make_shared<message_filters::Subscriber<SensorCombined>>(
+                          this,
+                          "/fmu/out/sensor_combined",
+                          qos);
+        _time_sync = std::make_shared<message_filters::Synchronizer<latest_policy>>(
+            latest_policy(this->get_clock()),
+            *_attitude_sub,
+            *_sensor_sub
+        );
+        _time_sync->registerCallback(std::bind(&ImuNode::_cb, this, _1, _2));
         _imu_pub = this->create_publisher<Imu>("imu", rclcpp::SensorDataQoS());
-        _sensor_sub = this->create_subscription<SensorCombined>(
-            "/fmu/out/sensor_combined", rclcpp::SensorDataQoS(),
-            std::bind(&ImuNode::_sensor_cb, this, _1));
     }
 
 private:
-    void _sensor_cb(const SensorCombined &sensor)
+    void _cb(const VehicleAttitude::ConstSharedPtr &attitude, const SensorCombined::ConstSharedPtr &sensor)
     {
-        rclcpp::Time time = get_clock()->now();
+        rclcpp::Time time_att(attitude->timestamp / 1000000ULL, (attitude->timestamp % 1000000ULL) * 1000ULL);
+        rclcpp::Time time_sen(sensor->timestamp / 1000000ULL, (sensor->timestamp % 1000000ULL) * 1000ULL);
+
+        auto time = (time_att > time_sen) ? time_att : time_sen;
 
         auto ang_vel = aircraft_to_baselink_body_frame(Vector3d(
-            sensor.gyro_rad[0], sensor.gyro_rad[1], sensor.gyro_rad[2]));
+            sensor->gyro_rad[0], sensor->gyro_rad[1], sensor->gyro_rad[2]));
         auto lin_acc = aircraft_to_baselink_body_frame(Vector3d(
-            sensor.accelerometer_m_s2[0], sensor.accelerometer_m_s2[1], sensor.accelerometer_m_s2[2]));
-        // auto orientation = px4_to_ros_orientation(Quaterniond(
-        //     odom_in.q[0], odom_in.q[1], odom_in.q[2], odom_in.q[3]));
+            sensor->accelerometer_m_s2[0], sensor->accelerometer_m_s2[1], sensor->accelerometer_m_s2[2]));
+        auto orientation = px4_to_ros_orientation(Quaterniond(
+            attitude->q[0], attitude->q[1], attitude->q[2], attitude->q[3]));
 
         Imu imu;
         imu.header.stamp = time;
@@ -50,13 +72,21 @@ private:
         imu.linear_acceleration.y = lin_acc.y();
         imu.linear_acceleration.z = lin_acc.z();
 
-        imu.orientation_covariance[0] = -1;
+        imu.orientation.w = orientation.w();
+        imu.orientation.x = orientation.x();
+        imu.orientation.y = orientation.y();
+        imu.orientation.z = orientation.z();
 
         _imu_pub->publish(std::move(imu));
     }
 
+    using latest_policy = message_filters::sync_policies::LatestTime<VehicleAttitude, SensorCombined>;
+    std::shared_ptr<message_filters::Synchronizer<latest_policy>> _time_sync;
+
+    std::shared_ptr<message_filters::Subscriber<VehicleAttitude>> _attitude_sub;
+    std::shared_ptr<message_filters::Subscriber<SensorCombined>> _sensor_sub;
+
     rclcpp::Publisher<Imu>::SharedPtr _imu_pub;
-    rclcpp::Subscription<SensorCombined>::SharedPtr _sensor_sub;
 };
 
 int main(int argc, char *argv[])

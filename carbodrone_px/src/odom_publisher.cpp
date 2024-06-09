@@ -27,7 +27,7 @@ public:
     OdomPublisher()
         : Node("odom_publisher")
     {
-        _odom_pub = this->create_publisher<Odometry>("odometry", rclcpp::SensorDataQoS());
+        _odom_pub = this->create_publisher<Odometry>("odom", rclcpp::SensorDataQoS());
         _odom_sub = this->create_subscription<VehicleOdometry>(
             "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(),
             std::bind(&OdomPublisher::_odom_cb, this, _1));
@@ -37,13 +37,12 @@ public:
 private:
     void _odom_cb(const VehicleOdometry &odom_in)
     {
-        rclcpp::Time time = get_clock()->now();
-
         auto position = ned_to_enu_local_frame(Vector3d(odom_in.position[0], odom_in.position[1], odom_in.position[2]));
         auto orientation = px4_to_ros_orientation(Quaterniond(odom_in.q[0], odom_in.q[1], odom_in.q[2], odom_in.q[3]));
 
         Odometry odom_out;
-        odom_out.header.stamp = time;
+        odom_out.header.stamp.sec = odom_in.timestamp / 1000000ULL;
+        odom_out.header.stamp.nanosec = (odom_in.timestamp % 1000000ULL) * 1000ULL;
         odom_out.header.frame_id = "odom";
         odom_out.child_frame_id = "base_link";
 
@@ -59,7 +58,8 @@ private:
         _odom_pub->publish(std::move(odom_out));
 
         TransformStamped tf;
-        tf.header.stamp = time;
+        tf.header.stamp.sec = odom_in.timestamp / 1000000ULL;
+        tf.header.stamp.nanosec = (odom_in.timestamp % 1000000ULL) * 1000ULL;
         tf.header.frame_id = "odom";
         tf.child_frame_id = "base_link";
 
