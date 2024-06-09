@@ -8,12 +8,17 @@
 #include "tf2_ros/buffer.h"
 #include "px4_ros_com/frame_transforms.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "message_filters/time_synchronizer.h"
+#include "message_filters/subscriber.h"
+#include "message_filters/sync_policies/latest_time.h"
 
 #include "sensor_msgs/msg/image.hpp"
 #include "px4_msgs/msg/landing_target_pose.hpp"
+#include "px4_msgs/msg/vehicle_local_position.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 
 using std::placeholders::_1;
+using std::placeholders::_2;
 using namespace px4_msgs::msg;
 using namespace sensor_msgs::msg;
 using namespace geometry_msgs::msg;
@@ -27,18 +32,35 @@ public:
     BallDetector()
         : Node("ball_detector")
     {
-        _tf_buf = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+        _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
-        _img_sub = this->create_subscription<Image>(
-            "/bottom_camera", rclcpp::SensorDataQoS(),
-            std::bind(&BallDetector::_img_cb, this, _1));
+        _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
+
+        rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
+
+        _img_sub = std::make_unique<message_filters::Subscriber<Image>>(
+            this,
+            "/bottom_camera",
+            qos);
+
+        _position_sub = std::make_unique<message_filters::Subscriber<VehicleLocalPosition>>(
+            this,
+            "/fmu/out/vehicle_local_position",
+            qos);
+
+        _time_sync = std::make_unique<message_filters::Synchronizer<latest_policy>>(
+            latest_policy(get_clock()),
+            *_img_sub,
+            *_position_sub);
+
+        _time_sync->registerCallback(std::bind(&BallDetector::_cb, this, _1, _2));
+
         _target_pub = this->create_publisher<LandingTargetPose>(
             "/fmu/in/landing_target_pose", rclcpp::SensorDataQoS());
-        _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
     }
 
 private:
-    void _img_cb(const Image::ConstSharedPtr &img_in)
+    void _cb(const Image::ConstSharedPtr &img_in, const VehicleLocalPosition::ConstSharedPtr &vehicle_position)
     {
         auto img_ptr = cv_bridge::toCvCopy(img_in, "bgr8");
         auto img = img_ptr->image(cv::Rect(
@@ -51,30 +73,45 @@ private:
         cv::Mat threshold;
         cv::inRange(img_hsv, cv::Scalar(27, 100, 79), cv::Scalar(34, 255, 255), threshold);
 
-        auto moments = cv::moments(threshold, true);
-        auto cx = moments.m10 / moments.m00;
-        auto cy = moments.m01 / moments.m00;
-        auto radius = std::sqrt(moments.m00 / 3.141);
+        cv::Mat labels, stats, centroids;
+        int numComponents = cv::connectedComponentsWithStats(threshold, labels, stats, centroids);
 
-        try
+        double img_cx = img.cols * 0.5;
+        double img_cy = img.rows * 0.5;
+        double best_x;
+        double best_y;
+        double best_area = -1;
+        double best_distance = 1e9;
+        for (int i = 1; i < numComponents; ++i)
         {
-            auto ground2cam = _tf_buf->lookupTransform(
-                "odom", img_in->header.frame_id, tf2::TimePointZero);
-
-            TransformStamped cam2target;
-            cam2target.header = img_in->header;
-            cam2target.child_frame_id = "landing_target";
-
-            cam2target.transform.translation.x = ground2cam.transform.translation.z;
-            cam2target.transform.translation.y = -((cx / img.cols) - 0.5);
-            cam2target.transform.translation.z = -((cy / img.rows) - 0.5);
-
-            _tf_broadcaster->sendTransform(std::move(cam2target));
+            double area = stats.at<int>(i, cv::CC_STAT_AREA);
+            double x = centroids.at<double>(i, 0);
+            double y = centroids.at<double>(i, 1);
+            double distance = std::sqrt((x - img_cx) * (x - img_cx) + (y - img_cy) * (y - img_cy));
+            if (distance < best_distance)
+            {
+                best_x = x;
+                best_y = y;
+                best_area = area;
+                best_distance = distance;
+            }
         }
-        catch (const tf2::TransformException &ex)
-        {
-            RCLCPP_WARN(this->get_logger(), "Could not get ground2cam transform");
-        }
+
+        if (best_area < 0) return;
+
+        double cx = best_x;
+        double cy = best_y;
+        auto radius = std::sqrt(best_area / 3.141);
+
+        TransformStamped cam2target;
+        cam2target.header = img_in->header;
+        cam2target.child_frame_id = "landing_target";
+
+        cam2target.transform.translation.x = vehicle_position->dist_bottom;
+        cam2target.transform.translation.y = -((cx / img.cols) - 0.5);
+        cam2target.transform.translation.z = -((cy / img.rows) - 0.5);
+
+        _tf_broadcaster->sendTransform(std::move(cam2target));
 
         try
         {
@@ -108,8 +145,14 @@ private:
         cv::waitKey(1);
     }
 
-    rclcpp::Subscription<Image>::SharedPtr _img_sub;
+    using latest_policy = message_filters::sync_policies::LatestTime<Image, VehicleLocalPosition>;
+    std::unique_ptr<message_filters::Synchronizer<latest_policy>> _time_sync;
+
+    std::unique_ptr<message_filters::Subscriber<Image>> _img_sub;
+    std::unique_ptr<message_filters::Subscriber<VehicleLocalPosition>> _position_sub;
+
     rclcpp::Publisher<LandingTargetPose>::SharedPtr _target_pub;
+
     std::unique_ptr<tf2_ros::Buffer> _tf_buf;
     std::unique_ptr<tf2_ros::TransformListener> _tf_listener;
     std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
