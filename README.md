@@ -60,6 +60,8 @@
     ./simulation-gazebo
     # exit the program after starting
     ln -s $HOME/ros2_ws/src/carbodrone/**/worlds/*.sdf ~/.simulation-gazebo/worlds/
+    # modify ~/.simulation-gazebo/models/
+    # coming soon
     ```
 
 8. Install uXRCE-DDS

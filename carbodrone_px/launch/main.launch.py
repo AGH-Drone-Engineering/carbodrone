@@ -54,7 +54,9 @@ def generate_launch_description():
             name='parameter_bridge',
             output='screen',
             arguments=[
-                '/depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+                '/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+                # '/depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
+                '/bottom_depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             ],
             parameters=[{'use_sim_time': use_sim_time}],
@@ -66,9 +68,10 @@ def generate_launch_description():
             name='image_bridge',
             output='screen',
             arguments=[
-                '/camera',
+                # '/camera',
+                # '/depth_camera',
                 '/bottom_camera',
-                '/depth_camera',
+                '/bottom_depth_camera',
             ],
             parameters=[{'use_sim_time': use_sim_time}],
         ),

@@ -503,7 +503,9 @@
         </dynamics>
       </axis> -->
     </joint>
-    <link name="x500_depth_0/OakD-Lite/base_link/StereoOV7251">
+
+
+    <link name="x500_depth_0/OakD-Lite/base_link">
       <pose>.12 .03 .002 0 0 0</pose>
       <inertial>
         <pose>0.00358 -0.03 .014 0 0 0</pose>
@@ -537,14 +539,33 @@
       <gravity>true</gravity>
       <velocity_decay/>
     </link>
-    <joint name="CameraJoint" type="fixed">
+
+    <joint name="front-cam-joint" type="fixed">
       <parent>base_link</parent>
-      <child>x500_depth_0/OakD-Lite/base_link/StereoOV7251</child>
+      <child>x500_depth_0/OakD-Lite/base_link</child>
       <pose relative_to="base_link">.12 .03 .002 0 0 0</pose>
     </joint>
 
-    <link name="x500_depth_0/bottom-cam/base_link/IMX214">
-      <pose>0 0 -0.04 0 1.57 0</pose>
+    <link name="x500_depth_0/OakD-Lite/base_link/StereoOV7251">
+      <pose>.12 .03 .002 0 0 0</pose>
+    </link>
+    <joint name="front-cam-stereo-joint" type="fixed">
+      <parent>x500_depth_0/OakD-Lite/base_link</parent>
+      <child>x500_depth_0/OakD-Lite/base_link/StereoOV7251</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+    <link name="x500_depth_0/OakD-Lite/base_link/IMX214">
+      <pose>.12 .03 .002 0 0 0</pose>
+    </link>
+    <joint name="front-cam-imx-joint" type="fixed">
+      <parent>x500_depth_0/OakD-Lite/base_link</parent>
+      <child>x500_depth_0/OakD-Lite/base_link/IMX214</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+    <link name="x500_depth_0/bottom-cam/base_link">
+      <pose>0 0 -0.055 0 1.57 0</pose>
       <inertial>
         <mass>0.001</mass>
         <inertia>
@@ -558,10 +579,6 @@
       </inertial>
       <visual name="bottom-cam/visual">
         <geometry>
-          <!-- <mesh>
-            <scale>1 1 1</scale>
-            <uri>package://carbodrone_px/models/OakD-Lite/meshes/OakDLite.dae</uri>
-          </mesh> -->
           <box>
             <size>0.0175 0.091 0.028</size>
           </box>
@@ -577,10 +594,30 @@
       <gravity>true</gravity>
       <velocity_decay/>
     </link>
+
     <joint name="bottom-cam-joint" type="fixed">
       <parent>base_link</parent>
-      <child>x500_depth_0/bottom-cam/base_link/IMX214</child>
-      <pose relative_to="base_link">0 0 -0.04 0 1.57 0</pose>
+      <child>x500_depth_0/bottom-cam/base_link</child>
+      <pose relative_to="base_link">0 0 -0.055 0 1.57 0</pose>
     </joint>
+
+    <link name="x500_depth_0/bottom-cam/base_link/StereoOV7251">
+      <pose>0 0 -0.055 0 1.57 0</pose>
+    </link>
+    <joint name="bottom-cam-stereo-joint" type="fixed">
+      <parent>x500_depth_0/bottom-cam/base_link</parent>
+      <child>x500_depth_0/bottom-cam/base_link/StereoOV7251</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+    <link name="x500_depth_0/bottom-cam/base_link/IMX214">
+      <pose>0 0 -0.055 0 1.57 0</pose>
+    </link>
+    <joint name="bottom-cam-imx-joint" type="fixed">
+      <parent>x500_depth_0/bottom-cam/base_link</parent>
+      <child>x500_depth_0/bottom-cam/base_link/IMX214</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+
   </model>
 </sdf>
