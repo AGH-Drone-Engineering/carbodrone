@@ -11,9 +11,13 @@ def generate_launch_description():
 
     urdf = os.path.join(
         get_package_share_directory('carbodrone_px'),
-        "models/x500_depth/model.sdf")
+        'models/x500_depth/model.sdf')
     with open(urdf, 'r') as infp:
         robot_desc = infp.read()
+
+    rviz = os.path.join(
+        get_package_share_directory('carbodrone_px'),
+        'rviz/main.rviz')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -74,6 +78,7 @@ def generate_launch_description():
             executable='rviz2',
             name='rviz2',
             output='screen',
+            arguments=['-d', rviz],
             parameters=[{'use_sim_time': use_sim_time}],
         ),
 

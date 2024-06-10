@@ -35,8 +35,8 @@ install(TARGETS
 install(DIRECTORY
   launch
   models
-  worlds
   config
+  rviz
   DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(carbodrone_mars)
+project(carbodrone_sim)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,27 +10,6 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(cv_bridge REQUIRED)
-find_package(px4_msgs REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(px4_ros_com REQUIRED)
-
-add_executable(ball_detector src/ball_detector.cpp)
-ament_target_dependencies(ball_detector rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros)
-target_link_libraries(ball_detector ${OpenCV_LIBS})
-
-install(TARGETS
-  ball_detector
-  DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY
-  worlds
-  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
