@@ -250,14 +250,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -294,14 +293,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -338,14 +336,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -365,8 +362,8 @@
             </sphere>
           </geometry>
           <material>
-            <ambient>0.4 0.4 0.1 1</ambient>
-            <diffuse>0.8 0.8 0.1 1</diffuse>
+            <ambient>0.1 0.1 0.4 1</ambient>
+            <diffuse>0.1 0.1 0.8 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -382,14 +379,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -426,14 +422,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -470,14 +465,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -497,8 +491,8 @@
             </sphere>
           </geometry>
           <material>
-            <ambient>0.4 0.4 0.1 1</ambient>
-            <diffuse>0.8 0.8 0.1 1</diffuse>
+            <ambient>0.4 0.1 0.1 1</ambient>
+            <diffuse>0.8 0.1 0.1 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -514,14 +508,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -558,14 +551,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -585,8 +577,8 @@
             </sphere>
           </geometry>
           <material>
-            <ambient>0.4 0.4 0.1 1</ambient>
-            <diffuse>0.8 0.8 0.1 1</diffuse>
+            <ambient>0.4 0.1 0.4 1</ambient>
+            <diffuse>0.8 0.1 0.8 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -602,14 +594,13 @@
       <link name='link'>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.5</radius>
-              <length>0.001</length>
-            </cylinder>
+            <box>
+              <size>1 1 0.001</size>
+            </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
           </material>
         </visual>
@@ -642,7 +633,7 @@
     </model>
 
     <model name='landingpad'>
-      <pose>0 -9 0.001 0 0 0</pose>
+      <pose>-6 -6 0.001 0 0 0</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -651,9 +642,32 @@
             </box>
           </geometry>
           <material>
-            <ambient>0.300000012 0.300000012 0.300000012 1</ambient>
-            <diffuse>0.699999988 0.699999988 0.699999988 1</diffuse>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.9 0.9 0.9 1</diffuse>
             <specular>1 1 1 1</specular>
+          </material>
+        </visual>
+        <pose>0 0 0 0 0 0</pose>
+        <enable_wind>false</enable_wind>
+      </link>
+      <static>true</static>
+      <self_collide>false</self_collide>
+    </model>
+
+    <model name='barrel'>
+      <pose>0 18 0.5 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.290</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.1 0.1 0.3 1</ambient>
+            <diffuse>0.2 0.2 0.8 1</diffuse>
+            <specular>0.5 0.5 1 1</specular>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>

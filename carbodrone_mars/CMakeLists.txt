@@ -19,13 +19,15 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(px4_ros_com REQUIRED)
+find_package(image_geometry REQUIRED)
+find_package(image_transport REQUIRED)
 
-add_executable(ball_detector src/ball_detector.cpp)
-ament_target_dependencies(ball_detector rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros)
-target_link_libraries(ball_detector ${OpenCV_LIBS})
+add_executable(pickup src/pickup.cpp)
+ament_target_dependencies(pickup rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros image_geometry image_transport)
+target_link_libraries(pickup ${OpenCV_LIBS})
 
 install(TARGETS
-  ball_detector
+  pickup
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
