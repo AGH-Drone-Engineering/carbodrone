@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="x500">
+
+  <xacro:macro name="rotor" params="x y dir">
+    <visual>
+      <origin xyz="${x} ${y} .032" rpy="0 0 -.45"/>
+      <geometry>
+        <mesh filename="package://carbodrone_px/models/x500/meshes/5010Base.dae"/>
+      </geometry>
+    </visual>
+
+    <visual>
+      <origin xyz="${x - 0.022} ${y - 0.14638461538461536} ${0.06 - 0.016}"/>
+      <geometry>
+        <mesh
+          scale="0.8461538461538461 0.8461538461538461 0.8461538461538461"
+          filename="package://carbodrone_px/models/x500/meshes/1345_prop_${dir}.stl"
+        />
+      </geometry>
+    </visual>
+
+    <visual>
+      <origin xyz="${x} ${y} ${0.06 - 0.032}"/>
+      <geometry>
+        <mesh
+          scale="1 1 1"
+          filename="package://carbodrone_px/models/x500/meshes/5010Bell.dae"
+        />
+      </geometry>
+    </visual>
+  </xacro:macro>
+
+  <link name="base_link">
+
+    <visual>
+      <origin xyz="0 0 .024" rpy="0 0 3.141592654"/>
+      <geometry>
+        <mesh filename="package://carbodrone_px/models/x500/meshes/NXP-HGD-CF.dae"/>
+      </geometry>
+    </visual>
+
+    <xacro:rotor x="0.174" y="0.174" dir="cw"/>
+
+    <xacro:rotor x="-0.174" y="0.174" dir="ccw"/>
+
+    <xacro:rotor x="0.174" y="-0.174" dir="ccw"/>
+
+    <xacro:rotor x="-0.174" y="-0.174" dir="cw"/>
+
+  </link>
+
+  <link name="camera">
+    <visual>
+      <geometry>
+        <mesh filename="package://carbodrone_px/models/OakD-Lite/meshes/OakDLite.dae"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera"/>
+    <origin xyz="-0.013 0.03 -0.05" rpy="0 1.57 0"/>
+  </joint>
+
+  <link name="x500_depth_0/OakD-Lite/base_link/StereoOV7251"/>
+  <joint name="camera_depth_joint" type="fixed">
+    <parent link="camera"/>
+    <child link="x500_depth_0/OakD-Lite/base_link/StereoOV7251"/>
+    <origin xyz="0.01233 -0.03 .01878" rpy="0 0 0"/>
+  </joint>
+
+  <link name="x500_depth_0/OakD-Lite/base_link/IMX214"/>
+  <joint name="camera_rgb_joint" type="fixed">
+    <parent link="camera"/>
+    <child link="x500_depth_0/OakD-Lite/base_link/IMX214"/>
+    <origin xyz="0.01233 -0.03 .01878" rpy="-1.57 0 -1.57"/>
+  </joint>
+
+</robot>
