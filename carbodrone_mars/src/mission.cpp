@@ -7,6 +7,7 @@
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/trajectory_setpoint.hpp"
 #include "px4_msgs/msg/mode_completed.hpp"
+#include "px4_msgs/msg/vehicle_global_position.hpp"
 
 using namespace std::chrono_literals;
 
@@ -112,6 +113,11 @@ public:
             rclcpp::SensorDataQoS(),
             std::bind(&MissionNode::on_mode_completed, this, std::placeholders::_1));
 
+        _global_position_sub = create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
+            "/fmu/out/vehicle_global_position",
+            rclcpp::SensorDataQoS(),
+            std::bind(&MissionNode::on_global_position, this, std::placeholders::_1));
+
         _mission_altitude = declare_parameter("mission_altitude", 5.0);
     }
 
@@ -190,8 +196,8 @@ private:
         msg.source_component = 1;
         msg.from_external = true;
         msg.command = msg.VEHICLE_CMD_NAV_TAKEOFF;
-        msg.param5 = 47.39794428391416;
-        msg.param6 = 8.546124508703029;
+        msg.param5 = _global_position->lat;
+        msg.param6 = _global_position->lon;
         msg.param7 = altitude;
         _command_pub->publish(std::move(msg));
     }
@@ -202,15 +208,21 @@ private:
         _mode_completed = true;
     }
 
-    double _mission_altitude;
+    void on_global_position(const px4_msgs::msg::VehicleGlobalPosition::SharedPtr msg)
+    {
+        _global_position = msg;
+    }
 
+    double _mission_altitude;
     bool _mode_completed = false;
+    px4_msgs::msg::VehicleGlobalPosition::SharedPtr _global_position;
     
     rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr _command_pub;
     rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr _offboard_pub;
     rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr _trajectory_pub;
 
     rclcpp::Subscription<px4_msgs::msg::ModeCompleted>::SharedPtr _mode_completed_sub;
+    rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr _global_position_sub;
 };
 
 int main(int argc, char *argv[])
