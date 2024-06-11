@@ -1,9 +1,9 @@
 #include <memory>
+#include <chrono>
 
 #include "rclcpp/rclcpp.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
-#include "opencv2/highgui.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "px4_ros_com/frame_transforms.h"
@@ -15,22 +15,29 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "px4_msgs/msg/landing_target_pose.hpp"
 #include "px4_msgs/msg/vehicle_local_position.hpp"
+#include "px4_msgs/msg/vehicle_command.hpp"
+#include "px4_msgs/msg/vehicle_status.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 
 using std::placeholders::_1;
 using std::placeholders::_2;
-using namespace px4_msgs::msg;
-using namespace sensor_msgs::msg;
-using namespace geometry_msgs::msg;
+using namespace std::chrono_literals;
 using Eigen::Vector3d;
 using Eigen::Quaterniond;
 using px4_ros_com::frame_transforms::enu_to_ned_local_frame;
 
-class BallDetector : public rclcpp::Node
+enum class State
+{
+    WARMUP = 0,
+    LANDING,
+    DONE,
+};
+
+class PickupNode : public rclcpp::Node
 {
 public:
-    BallDetector()
-        : Node("ball_detector")
+    PickupNode()
+        : Node("pickup_node")
     {
         _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
@@ -38,12 +45,12 @@ public:
 
         rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
 
-        _img_sub = std::make_unique<message_filters::Subscriber<Image>>(
+        _img_sub = std::make_unique<message_filters::Subscriber<sensor_msgs::msg::Image>>(
             this,
-            "/bottom_camera",
+            "/camera/image",
             qos);
 
-        _position_sub = std::make_unique<message_filters::Subscriber<VehicleLocalPosition>>(
+        _position_sub = std::make_unique<message_filters::Subscriber<px4_msgs::msg::VehicleLocalPosition>>(
             this,
             "/fmu/out/vehicle_local_position",
             qos);
@@ -53,14 +60,62 @@ public:
             *_img_sub,
             *_position_sub);
 
-        _time_sync->registerCallback(std::bind(&BallDetector::_cb, this, _1, _2));
+        _time_sync->registerCallback(std::bind(&PickupNode::image_callback, this, _1, _2));
 
-        _target_pub = this->create_publisher<LandingTargetPose>(
+        _status_sub = create_subscription<px4_msgs::msg::VehicleStatus>(
+            "/fmu/out/vehicle_status",
+            rclcpp::SensorDataQoS(),
+            std::bind(&PickupNode::on_vehicle_status, this, _1));
+
+        _target_pub = create_publisher<px4_msgs::msg::LandingTargetPose>(
             "/fmu/in/landing_target_pose", rclcpp::SensorDataQoS());
+
+        _command_pub = create_publisher<px4_msgs::msg::VehicleCommand>(
+            "/fmu/in/vehicle_command", rclcpp::ServicesQoS());
+
+        _loop_timer = create_wall_timer(100ms, std::bind(&PickupNode::loop, this));
     }
 
 private:
-    void _cb(const Image::ConstSharedPtr &img_in, const VehicleLocalPosition::ConstSharedPtr &vehicle_position)
+    void loop()
+    {
+        switch (_state)
+        {
+        case State::WARMUP:
+            if (!_target_pose_ok) break;
+            trigger_precision_landing();
+            _state = State::LANDING;
+            break;
+
+        case State::LANDING:
+            if (_is_landed)
+            {
+                RCLCPP_INFO(get_logger(), "Landed");
+                _state = State::DONE;
+            }
+            break;
+
+        case State::DONE:
+            rclcpp::shutdown();
+            break;
+        }
+    }
+
+    void trigger_precision_landing()
+    {
+        RCLCPP_INFO(get_logger(), "Triggering precision landing");
+        px4_msgs::msg::VehicleCommand msg;
+        msg.timestamp = get_clock()->now().nanoseconds() / 1000;
+        msg.target_system = 1;
+        msg.target_component = 1;
+        msg.source_system = 1;
+        msg.source_component = 1;
+        msg.from_external = true;
+        msg.command = msg.VEHICLE_CMD_NAV_PRECLAND;
+        _command_pub->publish(std::move(msg));
+    }
+
+    void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in, const px4_msgs::msg::VehicleLocalPosition::ConstSharedPtr &vehicle_position)
     {
         auto img_ptr = cv_bridge::toCvCopy(img_in, "bgr8");
         auto img = img_ptr->image(cv::Rect(
@@ -106,29 +161,27 @@ private:
         double xm = xp / (img.cols * 0.5) * bm;
         double ym = yp / (img.rows * 0.5) * bm;
 
-        auto radius = std::sqrt(best_area / 3.141);
-
-        TransformStamped cam2target;
+        geometry_msgs::msg::TransformStamped cam2target;
         cam2target.header = img_in->header;
         cam2target.child_frame_id = "landing_target";
 
-        cam2target.transform.translation.x = vehicle_position->dist_bottom;
-        cam2target.transform.translation.y = -xm;
-        cam2target.transform.translation.z = -ym;
+        cam2target.transform.translation.x = xm;
+        cam2target.transform.translation.y = ym;
+        cam2target.transform.translation.z = vehicle_position->dist_bottom;
 
         _tf_broadcaster->sendTransform(std::move(cam2target));
 
         try
         {
             auto local2target = _tf_buf->lookupTransform(
-                "odom", "landing_target", tf2::TimePointZero);
+                "odom", "landing_target", cam2target.header.stamp, 10ms);
 
             auto target_pos = enu_to_ned_local_frame(Vector3d(
                 local2target.transform.translation.x,
                 local2target.transform.translation.y,
                 local2target.transform.translation.z));
 
-            LandingTargetPose target;
+            px4_msgs::msg::LandingTargetPose target;
             target.timestamp = static_cast<uint64_t>(local2target.header.stamp.sec) * 1000000ULL + static_cast<uint64_t>(local2target.header.stamp.nanosec) / 1000ULL;
             target.abs_pos_valid = true;
             target.rel_pos_valid = false;
@@ -138,35 +191,47 @@ private:
             target.y_abs = target_pos.y();
             target.z_abs = target_pos.z();
             _target_pub->publish(std::move(target));
+
+            _target_pose_ok = true;
         }
         catch (const tf2::TransformException &ex)
         {
             RCLCPP_WARN(this->get_logger(), "Could not get local2target transform");
         }
-
-        cv::circle(img, cv::Point(best_x, best_y), radius, cv::Scalar(0, 0, 255), 4);
-
-        cv::imshow("detector", img);
-        cv::waitKey(1);
     }
 
-    using latest_policy = message_filters::sync_policies::LatestTime<Image, VehicleLocalPosition>;
+    void on_vehicle_status(const px4_msgs::msg::VehicleStatus::SharedPtr msg)
+    {
+        if (msg->arming_state == px4_msgs::msg::VehicleStatus::ARMING_STATE_DISARMED)
+        {
+            _is_landed = true;
+        }
+    }
+
+    using latest_policy = message_filters::sync_policies::LatestTime<sensor_msgs::msg::Image, px4_msgs::msg::VehicleLocalPosition>;
     std::unique_ptr<message_filters::Synchronizer<latest_policy>> _time_sync;
 
-    std::unique_ptr<message_filters::Subscriber<Image>> _img_sub;
-    std::unique_ptr<message_filters::Subscriber<VehicleLocalPosition>> _position_sub;
+    std::unique_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>> _img_sub;
+    std::unique_ptr<message_filters::Subscriber<px4_msgs::msg::VehicleLocalPosition>> _position_sub;
+    rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr _status_sub;
 
-    rclcpp::Publisher<LandingTargetPose>::SharedPtr _target_pub;
+    rclcpp::Publisher<px4_msgs::msg::LandingTargetPose>::SharedPtr _target_pub;
+    rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr _command_pub;
 
     std::unique_ptr<tf2_ros::Buffer> _tf_buf;
     std::unique_ptr<tf2_ros::TransformListener> _tf_listener;
     std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
+
+    rclcpp::TimerBase::SharedPtr _loop_timer;
+    State _state = State::WARMUP;
+    bool _is_landed = false;
+    bool _target_pose_ok = false;
 };
 
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<BallDetector>());
+    rclcpp::spin(std::make_shared<PickupNode>());
     rclcpp::shutdown();
     return 0;
 }
