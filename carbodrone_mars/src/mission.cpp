@@ -3,9 +3,11 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "px4_msgs/msg/offboard_control_mode.hpp"
+#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+
 #include "px4_msgs/msg/vehicle_command.hpp"
-#include "px4_msgs/msg/trajectory_setpoint.hpp"
 #include "px4_msgs/msg/mode_completed.hpp"
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 
@@ -135,6 +137,10 @@ public:
     MissionNode()
         : StateMachineNode("mission_node")
     {
+        _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
+        _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
+        _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
+
         _command_pub = create_publisher<px4_msgs::msg::VehicleCommand>(
             "/fmu/in/vehicle_command", rclcpp::ServicesQoS());
 
@@ -167,14 +173,9 @@ private:
             break;
 
         case MissionState::TAKEOFF:
-            _mission_start_lat = _global_position->lat;
-            _mission_start_lon = _global_position->lon;
-            _mission_start_alt_ellipsoid = _global_position->alt_ellipsoid;
-            RCLCPP_INFO(get_logger(), "Mission started at: %.6f, %.6f, %.2f", _mission_start_lat, _mission_start_lon, _mission_start_alt_ellipsoid);
-
             RCLCPP_INFO(get_logger(), "Takeoff to %.2f meters", _mission_altitude);
             do_takeoff(_mission_altitude);
-            
+
             _mode_completed = false;
             change_state_after_condition(MissionState::DONE, [this](){
                 return _mode_completed;
@@ -233,14 +234,14 @@ private:
     }
 
     double _mission_altitude;
-    
+
     bool _mode_completed = false;
-    
-    double _mission_start_lat;
-    double _mission_start_lon;
-    double _mission_start_alt_ellipsoid;
-    
+
     px4_msgs::msg::VehicleGlobalPosition::SharedPtr _global_position;
+
+    std::unique_ptr<tf2_ros::Buffer> _tf_buf;
+    std::unique_ptr<tf2_ros::TransformListener> _tf_listener;
+    std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
 
     rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr _command_pub;
 
