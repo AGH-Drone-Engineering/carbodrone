@@ -27,15 +27,18 @@ public:
     OdomPublisher()
         : Node("odom_publisher")
     {
-        _odom_pub = this->create_publisher<Odometry>("odom", rclcpp::SensorDataQoS());
-        _odom_sub = this->create_subscription<VehicleOdometry>(
+        _odom_pub = create_publisher<Odometry>(
+            "odom", rclcpp::SensorDataQoS());
+        
+        _odom_sub = create_subscription<VehicleOdometry>(
             "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(),
-            std::bind(&OdomPublisher::_odom_cb, this, _1));
+            std::bind(&OdomPublisher::on_odom, this, _1));
+
         _tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
     }
 
 private:
-    void _odom_cb(const VehicleOdometry &odom_in)
+    void on_odom(const VehicleOdometry &odom_in)
     {
         auto position = ned_to_enu_local_frame(Vector3d(odom_in.position[0], odom_in.position[1], odom_in.position[2]));
         auto orientation = px4_to_ros_orientation(Quaterniond(odom_in.q[0], odom_in.q[1], odom_in.q[2], odom_in.q[3]));
