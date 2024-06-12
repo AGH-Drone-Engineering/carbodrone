@@ -27,12 +27,16 @@ ament_target_dependencies(odom_publisher rclcpp px4_msgs geometry_msgs nav_msgs 
 add_executable(ground_pub src/ground_pub.cpp)
 ament_target_dependencies(ground_pub rclcpp px4_msgs geometry_msgs px4_ros_com tf2 tf2_ros message_filters)
 
+add_executable(home_pub src/home_pub.cpp)
+ament_target_dependencies(home_pub rclcpp px4_msgs geometry_msgs px4_ros_com tf2 tf2_ros)
+
 add_executable(imu src/imu.cpp)
 ament_target_dependencies(imu rclcpp sensor_msgs px4_msgs px4_ros_com message_filters)
 
 install(TARGETS
   odom_publisher
   ground_pub
+  home_pub
   imu
   DESTINATION lib/${PROJECT_NAME})
 

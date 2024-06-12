@@ -39,10 +39,8 @@
 
 5. Configure `PX4-Autopilot/src/modules/uxrce_dds_client/dds_topics.yaml`
 
-    ```yaml
-    subscriptions:
-      - topic: /fmu/in/landing_target_pose
-        type: px4_msgs::msg::LandingTargetPose
+    ```bash
+    ln -sf $HOME/ros2_ws/src/carbodrone/carbodrone_px/config/dds_topics.yaml ~/px4/PX4-Autopilot/src/modules/uxrce_dds_client/dds_topics.yaml
     ```
 
 6. Disable `UXRCE_DDS_SYNCT` in PX4 startup script `PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS`
