@@ -19,6 +19,9 @@ enum class MissionState
     ARM,
     TAKEOFF,
 
+    GOTO_FIELD,
+    RETURN,
+
     DONE,
 
     NOOP,
@@ -28,6 +31,9 @@ static const char *MissionStateName[] = {
     "INIT",
     "ARM",
     "TAKEOFF",
+
+    "GOTO_FIELD",
+    "RETURN",
 
     "DONE",
 
@@ -177,9 +183,21 @@ private:
             do_takeoff(_mission_altitude);
 
             _mode_completed = false;
-            change_state_after_condition(MissionState::DONE, [this](){
+            change_state_after_condition(MissionState::GOTO_FIELD, [this](){
                 return _mode_completed;
             });
+            break;
+
+        case MissionState::GOTO_FIELD:
+            RCLCPP_INFO(get_logger(), "Going to field");
+            do_reposition(FIELD_WAYPOINTS[4][0], FIELD_WAYPOINTS[4][1], _mission_altitude);
+            change_state_after(MissionState::RETURN, 100);
+            break;
+
+        case MissionState::RETURN:
+            RCLCPP_INFO(get_logger(), "Returning to launch");
+            do_return_to_launch();
+            change_state(MissionState::DONE);
             break;
 
         case MissionState::DONE:
@@ -219,6 +237,36 @@ private:
         msg.param5 = NAN;
         msg.param6 = NAN;
         msg.param7 = altitude;
+        _command_pub->publish(std::move(msg));
+    }
+
+    void do_reposition(double latitude, double longitude, float altitude)
+    {
+        px4_msgs::msg::VehicleCommand msg;
+        msg.timestamp = get_clock()->now().nanoseconds() / 1000;
+        msg.target_system = 1;
+        msg.target_component = 1;
+        msg.source_system = 1;
+        msg.source_component = 1;
+        msg.from_external = true;
+        msg.command = msg.VEHICLE_CMD_DO_REPOSITION;
+        msg.param1 = -1;
+        msg.param5 = latitude;
+        msg.param6 = longitude;
+        msg.param7 = altitude;
+        _command_pub->publish(std::move(msg));
+    }
+
+    void do_return_to_launch()
+    {
+        px4_msgs::msg::VehicleCommand msg;
+        msg.timestamp = get_clock()->now().nanoseconds() / 1000;
+        msg.target_system = 1;
+        msg.target_component = 1;
+        msg.source_system = 1;
+        msg.source_component = 1;
+        msg.from_external = true;
+        msg.command = msg.VEHICLE_CMD_NAV_RETURN_TO_LAUNCH;
         _command_pub->publish(std::move(msg));
     }
 
