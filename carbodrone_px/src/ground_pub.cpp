@@ -66,13 +66,44 @@ private:
 
         if (status->arming_state == VehicleStatus::ARMING_STATE_ARMED && !_home_global_position)
         {
+            _home_global_position = std::make_unique<VehicleGlobalPosition>(*global_position);
+
+            try
+            {
+                auto footprint = _tf_buf->lookupTransform("base_footprint", "base_link", time, 1s);
+                double leg_height = footprint.transform.translation.z;
+                _home_global_position->alt_ellipsoid -= leg_height;
+                RCLCPP_INFO(this->get_logger(), "Compensated leg height: %.2f", leg_height);
+            }
+            catch (tf2::TransformException &ex)
+            {
+                RCLCPP_WARN(this->get_logger(), "Leg height lookup failed, assuming zero: %s", ex.what());
+            }
+
             RCLCPP_INFO(this->get_logger(), "Home position set: %.6f, %.6f, %.2f",
-                        global_position->lat, global_position->lon, global_position->alt_ellipsoid);
-            _home_global_position = global_position;
+                        _home_global_position->lat, _home_global_position->lon, _home_global_position->alt_ellipsoid);
         }
 
         double current_alt = global_position->alt_ellipsoid;
-        double home_alt = _home_global_position ? _home_global_position->alt_ellipsoid : current_alt;
+        double home_alt;
+        if (_home_global_position)
+        {
+            home_alt = _home_global_position->alt_ellipsoid;
+        }
+        else
+        {
+            home_alt = current_alt;
+            try
+            {
+                auto footprint = _tf_buf->lookupTransform("base_footprint", "base_link", time, 20ms);
+                double leg_height = footprint.transform.translation.z;
+                home_alt -= leg_height;
+            }
+            catch (tf2::TransformException &ex)
+            {
+                RCLCPP_WARN(this->get_logger(), "Leg height lookup failed, assuming zero: %s", ex.what());
+            }
+        }
 
         try
         {
@@ -82,7 +113,7 @@ private:
             tf.child_frame_id = "ground";
 
             double home2drone = current_alt - home_alt;
-            double odom2done = _tf_buf->lookupTransform("odom", "base_link", time, 10ms).transform.translation.z;
+            double odom2done = _tf_buf->lookupTransform("odom", "base_link", time, 20ms).transform.translation.z;
             double home2odom = home2drone - odom2done;
 
             tf.transform.translation.z = -home2odom;
@@ -105,7 +136,7 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> _tf_listener;
     std::shared_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
 
-    VehicleGlobalPosition::ConstSharedPtr _home_global_position;
+    VehicleGlobalPosition::UniquePtr _home_global_position;
 };
 
 int main(int argc, char *argv[])

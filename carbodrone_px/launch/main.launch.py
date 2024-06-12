@@ -1,10 +1,13 @@
 import os
 from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
+
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
 
@@ -14,17 +17,24 @@ def generate_launch_description():
         get_package_share_directory('carbodrone_px'),
         'rviz/main.rviz')
 
+    urdf_path = PathJoinSubstitution([FindPackageShare('carbodrone_px'), 'models', 'x500', 'model.urdf'])
+    robot_description_content = ParameterValue(Command(['xacro ', urdf_path]), value_type=str)
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
             default_value='true',
             description='Use simulation (Gazebo) clock if true'),
 
-        IncludeLaunchDescription(
-            PathJoinSubstitution([FindPackageShare('urdf_launch'), 'launch', 'description.launch.py']),
-            launch_arguments={
-                'urdf_package': 'carbodrone_px',
-                'urdf_package_path': PathJoinSubstitution(['models', 'x500', 'model.urdf'])}.items()
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            output='screen',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'robot_description': robot_description_content,
+            }],
         ),
 
         Node(
@@ -87,6 +97,14 @@ def generate_launch_description():
             package='carbodrone_px',
             executable='imu',
             name='imu',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+
+        Node(
+            package='carbodrone_px',
+            executable='ground_pub',
+            name='ground_pub',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
         ),
