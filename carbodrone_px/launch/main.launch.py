@@ -51,6 +51,7 @@ def generate_launch_description():
             name='odom_publisher',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
+            respawn=True,
         ),
 
         Node(
@@ -99,6 +100,7 @@ def generate_launch_description():
             name='imu',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
+            respawn=True,
         ),
 
         Node(
@@ -107,5 +109,6 @@ def generate_launch_description():
             name='ground_pub',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
+            respawn=True,
         ),
     ])
