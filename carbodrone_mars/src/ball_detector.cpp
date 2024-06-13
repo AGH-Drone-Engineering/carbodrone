@@ -66,9 +66,7 @@ private:
         }
 
         auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
-        auto img = img_ptr->image(cv::Rect(
-            (img_ptr->image.cols - img_ptr->image.rows) / 2, 0,
-            img_ptr->image.rows, img_ptr->image.rows));
+        auto img = img_ptr->image;
 
         cv::Mat img_hsv;
         cv::cvtColor(img, img_hsv, cv::COLOR_BGR2HSV);
@@ -79,8 +77,8 @@ private:
         cv::Mat labels, stats, centroids;
         int numComponents = cv::connectedComponentsWithStats(threshold, labels, stats, centroids);
 
-        double img_cx = img.cols * 0.5;
-        double img_cy = img.rows * 0.5;
+        double img_cx = img.cols / 2;
+        double img_cy = img.rows / 2;
         double best_x;
         double best_y;
         double best_area = -1;
@@ -103,21 +101,20 @@ private:
         if (best_area < 0)
             return;
 
-        double xp = best_x - img.cols * 0.5;
-        double yp = best_y - img.rows * 0.5;
+        _cam_model.fromCameraInfo(cam_info);
 
-        double bm = dist_bottom * (4.5 / 8.0);
-        double xm = xp / (img.cols * 0.5) * bm;
-        double ym = yp / (img.rows * 0.5) * bm;
+        cv::Point2d uv_raw(best_x, best_y);
+        auto uv = _cam_model.rectifyPoint(uv_raw);
+        auto ray = _cam_model.projectPixelTo3dRay(uv);
 
         geometry_msgs::msg::TransformStamped cam2target;
         cam2target.header.stamp = time;
         cam2target.header.frame_id = img_in->header.frame_id;
         cam2target.child_frame_id = "landing_target";
 
-        cam2target.transform.translation.x = xm;
-        cam2target.transform.translation.y = ym;
-        cam2target.transform.translation.z = dist_bottom;
+        cam2target.transform.translation.x = ray.x * dist_bottom;
+        cam2target.transform.translation.y = ray.y * dist_bottom;
+        cam2target.transform.translation.z = ray.z * dist_bottom;
 
         _tf_broadcaster->sendTransform(std::move(cam2target));
 
@@ -158,6 +155,8 @@ private:
     std::shared_ptr<tf2_ros::Buffer> _tf_buf;
     std::shared_ptr<tf2_ros::TransformListener> _tf_listener;
     std::shared_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
+
+    image_geometry::PinholeCameraModel _cam_model;
 };
 
 int main(int argc, char *argv[])
