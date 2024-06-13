@@ -13,31 +13,33 @@
 
 using namespace std::chrono_literals;
 
+#define MISSION_STATE_LIST \
+    X(INIT)                \
+    \
+    X(DO_TAKEOFF_ENTER)    \
+    X(DO_TAKEOFF_ARMED)    \
+    X(DO_TAKEOFF_LEAVE)    \
+    \
+    X(DO_REPOSITION_ENTER) \
+    X(DO_REPOSITION_LEAVE) \
+    \
+    X(DO_PRECLAND_ENTER)   \
+    X(DO_PRECLAND_LEAVE)   \
+    \
+    X(DONE)                \
+    X(NOOP)
+
 enum class MissionState
 {
-    INIT = 0,
-    ARM,
-    TAKEOFF,
-
-    GOTO_FIELD,
-    RETURN,
-
-    DONE,
-
-    NOOP,
+#define X(name) name,
+    MISSION_STATE_LIST
+#undef X
 };
 
 static const char *MissionStateName[] = {
-    "INIT",
-    "ARM",
-    "TAKEOFF",
-
-    "GOTO_FIELD",
-    "RETURN",
-
-    "DONE",
-
-    "NOOP",
+#define X(name) #name,
+    MISSION_STATE_LIST
+#undef X
 };
 
 static const double BARREL_WAYPOINT[2] = {47.398132805733496, 8.54616487844852};
