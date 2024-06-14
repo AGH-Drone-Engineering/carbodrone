@@ -253,8 +253,15 @@ private:
 
     void on_mode_completed(const ModeCompleted::SharedPtr msg)
     {
-        RCLCPP_INFO(get_logger(), "Mode %d completed", msg->nav_state);
-        _takeoff_completed = true;
+        if (msg->nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF)
+        {
+            RCLCPP_INFO(get_logger(), "Takeoff completed");
+            _takeoff_completed = true;
+        }
+        else
+        {
+            RCLCPP_INFO(get_logger(), "Mode %d completed", msg->nav_state);
+        }
     }
 
     void on_vehicle_status(const VehicleStatus::SharedPtr msg)
