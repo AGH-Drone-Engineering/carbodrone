@@ -37,6 +37,7 @@ install(TARGETS
 
 install(DIRECTORY
   worlds
+  launch
   DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)

@@ -121,7 +121,7 @@ private:
         try
         {
             auto local2target = _tf_buf->lookupTransform(
-                "odom", "landing_target", cam2target.header.stamp, 10ms);
+                "odom", "landing_target", cam2target.header.stamp, 30ms);
 
             auto target_pos = enu_to_ned_local_frame(Vector3d(
                 local2target.transform.translation.x,
