@@ -103,9 +103,9 @@ static const double BARREL_AIM_ALT = 1.0;
 static const double BARREL_HEIGHT = 1.0;
 static const int GRABBER_DELAY = 20;
 
-static const double GLOBAL_LAT_ACCEPTANCE = 0.0001;
-static const double GLOBAL_LON_ACCEPTANCE = 0.0001;
-static const float GLOBAL_ALT_ACCEPTANCE = 0.1;
+static const double GLOBAL_LAT_ACCEPTANCE = 0.001;
+static const double GLOBAL_LON_ACCEPTANCE = 0.001;
+static const float GLOBAL_ALT_ACCEPTANCE = 0.5;
 
 class MissionNode : public StateMachineNode
 {
