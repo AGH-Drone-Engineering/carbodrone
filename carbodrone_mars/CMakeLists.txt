@@ -28,6 +28,7 @@ target_link_libraries(ball_detector ${OpenCV_LIBS})
 
 add_executable(mission_node src/mission.cpp)
 ament_target_dependencies(mission_node rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros image_geometry image_transport)
+target_include_directories(mission_node PRIVATE src)
 
 install(TARGETS
   ball_detector
