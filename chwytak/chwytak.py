@@ -5,7 +5,7 @@ from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import String
 import time
 from std_srvs.srv import SetBool
-import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO #change for lgpio?
 
 
 class GripperNode(Node):
@@ -15,8 +15,8 @@ class GripperNode(Node):
 
         self.declare_parameter("state", "open")
         self.declare_parameter("pin_list", [12, 18, 19, 23])
-        self.declare_parameter("pose_open_list", [0, 0, 0, 0])
-        self.declare_parameter("pose_close_list", [90, 90, 90, 90])
+        self.declare_parameter("pose_open_list", [90, 0, 0, 0])
+        self.declare_parameter("pose_close_list", [0, 90, 90, 90])
 
         self.service = self.create_service(
             SetBool, "change_gripper_state", self.handle_state_change
