@@ -109,5 +109,8 @@ PX4_GZ_MODEL_POSE=-6,-6 PX4_GZ_STANDALONE=1 make px4_sitl gz_x500_depth
 ```
 
 ```bash
-ros2 launch carbodrone_px main.launch.py
+cd ~/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/local_setup.bash
+ros2 launch carbodrone_px sim.launch.py
 ```
