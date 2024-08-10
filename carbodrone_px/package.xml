@@ -18,7 +18,6 @@
   <build_depend>image_transport</build_depend>
   <build_depend>message_filters</build_depend>
   <build_depend>nav_msgs</build_depend>
-  <build_depend>OpenCV</build_depend>
   <build_depend>px4_msgs</build_depend>
   <build_depend>px4_ros_com</build_depend>
   <build_depend>rclcpp</build_depend>

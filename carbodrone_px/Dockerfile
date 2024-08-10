@@ -19,7 +19,7 @@ repositories: \n\
 RUN vcs import ./ < ../overlay.repos
 
 WORKDIR $OVERLAY_WS/src/carbodrone/carbodrone_px
-COPY . .
+COPY package.xml ./
 
 # copy manifests for caching
 WORKDIR /opt
@@ -51,13 +51,19 @@ ARG OVERLAY_MIXINS="release"
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     colcon build \
       --packages-select \
-        carbodrone_px \
         px4_msgs \
         px4_ros_com \
       --mixin $OVERLAY_MIXINS
 
+COPY . ./src/carbodrone/carbodrone_px
+RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
+    colcon build \
+      --packages-select \
+        carbodrone_px \
+      --mixin $OVERLAY_MIXINS
+
 # source entrypoint setup
-ENV OVERLAY_WS $OVERLAY_WS
+ENV OVERLAY_WS=$OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
