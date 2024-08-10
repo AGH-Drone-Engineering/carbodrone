@@ -9,9 +9,6 @@ ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS/src
 RUN echo "\
 repositories: \n\
-  carbodrone: \n\
-    type: git \n\
-    url: https://github.com/AGH-Drone-Engineering/carbodrone.git \n\
   px4_msgs: \n\
     type: git \n\
     url: https://github.com/PX4/px4_msgs.git \n\
@@ -20,6 +17,9 @@ repositories: \n\
     url: https://github.com/PX4/px4_ros_com.git \n\
 " > ../overlay.repos
 RUN vcs import ./ < ../overlay.repos
+
+WORKDIR $OVERLAY_WS/src/carbodrone/carbodrone_mars
+COPY package.xml ./
 
 # copy manifests for caching
 WORKDIR /opt
@@ -39,7 +39,6 @@ COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && rosdep install -y \
       --from-paths \
-        src/carbodrone/carbodrone_px \
         src/carbodrone/carbodrone_mars \
         src/px4_msgs \
         src/px4_ros_com \
@@ -52,17 +51,25 @@ ARG OVERLAY_MIXINS="release"
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     colcon build \
       --packages-select \
-        carbodrone_px \
-        carbodrone_mars \
         px4_msgs \
         px4_ros_com \
       --mixin $OVERLAY_MIXINS
 
+COPY . ./src/carbodrone/carbodrone_mars
+RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
+    colcon build \
+      --packages-select \
+        carbodrone_mars \
+      --mixin $OVERLAY_MIXINS
+
 # source entrypoint setup
-ENV OVERLAY_WS $OVERLAY_WS
+ENV OVERLAY_WS=$OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
 
+RUN useradd -m -d /home/user user
+USER user
+
 # run launch file
-CMD ["ros2", "run", "carbodrone_px", "odom_publisher"]
+CMD ["ros2", "run", "carbodrone_mars", "ball_detector"]
