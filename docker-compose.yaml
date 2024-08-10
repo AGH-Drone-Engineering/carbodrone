@@ -1,0 +1,24 @@
+services:
+  carbodrone_px:
+    image: carbodrone:latest
+    build: .
+    network_mode: host
+    ipc: host
+    pid: host
+    volumes:
+      - /dev/shm:/dev/shm
+    command: ["ros2", "launch", "carbodrone_px", "real.launch.py"]
+    environment:
+      - ROS_DOMAIN_ID=42
+
+  carbodrone_mars:
+    image: carbodrone:latest
+    build: .
+    network_mode: host
+    ipc: host
+    pid: host
+    volumes:
+      - /dev/shm:/dev/shm
+    command: ["ros2", "run", "carbodrone_mars", "ball_detector"]
+    environment:
+      - ROS_DOMAIN_ID=42
