@@ -23,6 +23,8 @@ using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using px4_ros_com::frame_transforms::enu_to_ned_local_frame;
 
+#define ESTIMATE_DISTANCE_FROM_DIAMETER 1
+
 class BallDetector : public rclcpp::Node
 {
 public:
@@ -52,21 +54,8 @@ private:
     {
         rclcpp::Time time = img_in->header.stamp;
 
-        double dist_bottom;
-        try
-        {
-            auto t = _tf_buf->lookupTransform(
-                "ground", img_in->header.frame_id, time, 10ms);
-            dist_bottom = t.transform.translation.z;
-        }
-        catch (const tf2::TransformException &ex)
-        {
-            RCLCPP_WARN(this->get_logger(), "Could not get height above ground");
-            return;
-        }
-
         auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
-        auto img = img_ptr->image;
+        const auto &img = img_ptr->image;
 
         cv::Mat img_hsv;
         cv::cvtColor(img, img_hsv, cv::COLOR_BGR2HSV);
@@ -106,6 +95,26 @@ private:
         cv::Point2d uv_raw(best_x, best_y);
         auto uv = _cam_model.rectifyPoint(uv_raw);
         auto ray = _cam_model.projectPixelTo3dRay(uv);
+
+#if ESTIMATE_DISTANCE_FROM_DIAMETER
+        const double ball_diameter_mm = 70.0;
+        const double ball_diameter_pixels = 2.0 * std::sqrt(best_area / M_PI);
+        const double focal_length = (_cam_model.fx() + _cam_model.fy()) * 0.5;
+        const double dist_bottom = (ball_diameter_mm / 1000.0) * focal_length / ball_diameter_pixels;
+#else
+        double dist_bottom;
+        try
+        {
+            auto t = _tf_buf->lookupTransform(
+                "ground", img_in->header.frame_id, time, 10ms);
+            dist_bottom = t.transform.translation.z;
+        }
+        catch (const tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not get height above ground");
+            return;
+        }
+#endif
 
         geometry_msgs::msg::TransformStamped cam2target;
         cam2target.header.stamp = time;
