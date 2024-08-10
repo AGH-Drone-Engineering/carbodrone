@@ -1,0 +1,4 @@
+/.vscode/
+/build/
+/Dockerfile
+/docker-compose.yaml

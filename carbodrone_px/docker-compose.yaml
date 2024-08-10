@@ -1,0 +1,9 @@
+services:
+  carbodrone_px:
+    image: carbodrone_px:latest
+    build: .
+    network_mode: host
+    ipc: host
+    pid: host
+    volumes:
+      - /dev/shm:/dev/shm
