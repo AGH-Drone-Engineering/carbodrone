@@ -53,6 +53,7 @@ install(DIRECTORY
 
 install(PROGRAMS
   scripts/commander.py
+  scripts/camera_publisher.py
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

@@ -1,7 +1,7 @@
 services:
   carbodrone_px:
-    image: carbodrone:latest
-    build: .
+    image: carbodrone_px:latest
+    build: carbodrone_px
     network_mode: host
     ipc: host
     pid: host
@@ -12,8 +12,8 @@ services:
       - ROS_DOMAIN_ID=42
 
   carbodrone_mars:
-    image: carbodrone:latest
-    build: .
+    image: carbodrone_mars:latest
+    build: carbodrone_mars
     network_mode: host
     ipc: host
     pid: host
