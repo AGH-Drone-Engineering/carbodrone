@@ -9,7 +9,7 @@ def main():
     cap.start()
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect('/tmp/carbodrone_px_camera')
+    sock.connect('/tmp/carbodrone/camera')
 
     while True:
         frame = cap.capture_array('main')

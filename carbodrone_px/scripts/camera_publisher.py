@@ -20,7 +20,7 @@ class CameraPublisher(Node):
         self.cv_bridge = CvBridge()
         self.camera_info = self.create_camera_info()
 
-        self.create_socket('/tmp/carbodrone_px_camera')
+        self.create_socket('/tmp/carbodrone/camera')
 
         self.is_running = True
         self.thread = threading.Thread(target=self.capture_and_publish)

@@ -7,7 +7,7 @@ services:
     pid: host
     volumes:
       - /dev/shm:/dev/shm
-      - /tmp/carbodrone_px_camera:/tmp/carbodrone_px_camera
+      - /tmp/carbodrone:/tmp/carbodrone
     command: ["ros2", "launch", "carbodrone_px", "real.launch.py"]
     environment:
       - ROS_DOMAIN_ID=42
