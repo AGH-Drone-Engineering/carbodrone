@@ -285,7 +285,34 @@ private:
             RCLCPP_INFO(get_logger(), "Landing at field %d", _next_field_to_scan);
             disable_goto_setpoint();
             do_precision_land();
-            change_state(MissionState::DONE);
+            change_state_after_condition(
+                MissionState::DO_BALL_PICKUP_GRAB,
+                std::bind(&MissionNode::landing_completed, this));
+            break;
+
+        case MissionState::DO_BALL_PICKUP_GRAB:
+            RCLCPP_INFO(get_logger(), "Grabbing ball at field %d", _next_field_to_scan);
+            change_state_after(
+                MissionState::DO_TAKEOFF_ARM,
+                GRABBER_DELAY);
+            break;
+
+        case MissionState::DO_TAKEOFF_ARM:
+            RCLCPP_INFO(get_logger(), "Taking off [arming]");
+            do_arm();
+            do_takeoff(MISSION_START_ALT);
+            _takeoff_completed = false;
+            change_state_after_condition(MissionState::DO_BARREL_GOTO, [this](){
+                return _takeoff_completed;
+            });
+            break;
+
+        case MissionState::DO_BARREL_GOTO:
+            RCLCPP_INFO(get_logger(), "Going to barrel");
+            do_reposition(BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]);
+            change_state_after_condition(
+                MissionState::DONE,
+                std::bind(&MissionNode::reached_global_position, this, BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]));
             break;
 
         case MissionState::DO_RTL:
@@ -536,6 +563,11 @@ private:
         }
 
         return accept;
+    }
+
+    bool landing_completed()
+    {
+        return !_is_armed;
     }
 
     double get_ground_z()
