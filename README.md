@@ -90,6 +90,13 @@
     colcon build --symlink-install
     ```
 
+11. Modify `~/.bashrc`
+
+    ```bash
+    source /opt/ros/humble/setup.bash
+    source ~/ros2_ws/install/setup.bash
+    ```
+
 ## Running
 
 In multiple terminals:
@@ -110,7 +117,5 @@ PX4_GZ_MODEL_POSE=-6,-6 PX4_GZ_STANDALONE=1 make px4_sitl gz_x500_depth
 
 ```bash
 cd ~/ros2_ws
-source /opt/ros/humble/setup.bash
-source install/local_setup.bash
 ros2 launch carbodrone_px sim.launch.py
 ```
