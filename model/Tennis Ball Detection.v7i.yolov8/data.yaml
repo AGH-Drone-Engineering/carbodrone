@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['blue', 'green', 'purple', 'red']
+
+roboflow:
+  workspace: teddybear-errog
+  project: tennis-ball-detection-3vhl5
+  version: 7
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/teddybear-errog/tennis-ball-detection-3vhl5/dataset/7
