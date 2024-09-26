@@ -47,7 +47,7 @@
  * The drone will land here after the mission.
  * The lat/lon will be ignored if INITIALIZE_LANDING_PAD_AFTER_MISSION_START is true.
  */
-static const double LANDING_PAD_WAYPOINT[3] = {0, 0, 6.0};
+static double LANDING_PAD_WAYPOINT[3] = {0, 0, 6.0};
 
 /**
  * If true, the landing pad location will be set based on the GPS position of the drone after starting the mission.

@@ -19,6 +19,8 @@
 #include "px4_msgs/msg/offboard_control_mode.hpp"
 #include "px4_msgs/msg/goto_setpoint.hpp"
 
+#include "mission_params.hpp"
+
 using namespace std::chrono_literals;
 using px4_msgs::msg::VehicleCommand;
 using px4_msgs::msg::ModeCompleted;
@@ -73,12 +75,9 @@ enum PX4_CUSTOM_SUB_MODE_AUTO
     \
     X(DO_TAKEOFF)          \
     \
-    X(DO_MINE_SCAN_GOTO)   \
-    X(DO_MINE_SCAN_REBASE) \
-    \
-    X(DO_FIELD_SCAN_GOTO)  \
-    X(DO_FIELD_SCAN_REBASE)\
-    X(DO_FIELD_SCAN_DETECT)\
+    X(DO_FIELD_REPOSITION) \
+    X(DO_FIELD_DESCEND)    \
+    X(DO_FIELD_DETECT)     \
     \
     X(DO_BALL_PICKUP_LAND) \
     X(DO_BALL_PICKUP_GRAB) \
@@ -86,11 +85,10 @@ enum PX4_CUSTOM_SUB_MODE_AUTO
     X(DO_TAKEOFF_ARM)      \
     \
     X(DO_BARREL_GOTO)      \
-    X(DO_BARREL_AIM)       \
     X(DO_BARREL_DROP)      \
-    X(DO_BARREL_CLEAR)     \
     \
-    X(DO_RTL)              \
+    X(DO_RTL_REPOSITION)   \
+    X(DO_RTL_LAND)         \
     \
     X(DONE)                \
     X(NOOP)
@@ -109,69 +107,6 @@ static const char *MissionStateName[] = {
 };
 
 #include "state_machine_node.hpp"
-
-static const double BARREL_WAYPOINT[3] = {47.398132805733496, 8.54616487844852, 10.0};
-
-static const double MINE_WAYPOINT[3] = {47.39796990342122, 8.546164727922147, 15.0};
-
-static const double FIELD_WAYPOINTS[9][2] = {
-    {47.39794428391416,
-    8.546124508703029},
-
-    {47.39794345305943,
-    8.546163475080547},
-
-    {47.397944639996325,
-    8.546205423551793},
-
-
-    {47.39797073863487,
-    8.546205348996033},
-
-    {47.39796990342122,
-    8.546164727922147},
-
-    {47.39796978094731,
-    8.546123857278653},
-
-
-    {47.39799703247861,
-    8.546121949343245},
-
-    {47.397997851411425,
-    8.546163149292989},
-
-    {47.39799618218166,
-    8.546203601239528}
-};
-
-static const double FIELD_COORDINATES[9][2] = {
-    {3, 9},
-    {6, 9},
-    {9, 9},
-    {9, 6},
-    {6, 6},
-    {3, 6},
-    {3, 3},
-    {6, 3},
-    {9, 3}
-};
-
-static constexpr double MISSION_START_ALT = 10.0;
-static constexpr double FIELD_SCAN_ALT = 3.0;
-static constexpr double BARREL_AIM_ALT = 1.0;
-static constexpr double BARREL_HEIGHT = 1.0;
-static constexpr int GRABBER_DELAY = 20;
-static constexpr int NUM_FIELDS = 9;
-
-static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.001;
-static constexpr double GLOBAL_LON_ACCEPTANCE = 0.001;
-static constexpr float GLOBAL_ALT_ACCEPTANCE = 0.5;
-
-static constexpr double LOCAL_XY_ACCEPTANCE = 0.1;
-static constexpr double LOCAL_Z_ACCEPTANCE = 0.1;
-
-static constexpr double VEL_ACCEPANCE = 0.5;
 
 class MissionNode : public StateMachineNode
 {
@@ -229,61 +164,54 @@ private:
             break;
 
         case MissionState::DO_TAKEOFF:
-            RCLCPP_INFO(get_logger(), "Takeoff to %.2f meters", MISSION_START_ALT);
+            if (INITIALIZE_LANDING_PAD_AFTER_MISSION_START)
+            {
+                RCLCPP_INFO(get_logger(), "Initializing landing pad at %.6f, %.6f", _global_position->lat, _global_position->lon);
+                LANDING_PAD_WAYPOINT[0] = _global_position->lat;
+                LANDING_PAD_WAYPOINT[1] = _global_position->lon;
+            }
+            else
+            {
+                RCLCPP_INFO(get_logger(), "Using hardcoded landing pad at %.6f, %.6f", LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1]);
+            }
+
             do_takeoff(MISSION_START_ALT);
 
             _takeoff_completed = false;
-            change_state_after_condition(MissionState::DO_MINE_SCAN_GOTO, [this](){
+            change_state_after_condition(MissionState::DO_FIELD_REPOSITION, [this](){
                 return _takeoff_completed;
             });
             break;
 
-        case MissionState::DO_MINE_SCAN_GOTO:
-            RCLCPP_INFO(get_logger(), "Going to mine scan waypoint");
-            do_reposition(MINE_WAYPOINT[0], MINE_WAYPOINT[1], MINE_WAYPOINT[2]);
-            change_state_after_condition(
-                MissionState::DO_MINE_SCAN_REBASE,
-                std::bind(&MissionNode::reached_global_position, this, MINE_WAYPOINT[0], MINE_WAYPOINT[1], MINE_WAYPOINT[2]));
-            break;
-
-        case MissionState::DO_MINE_SCAN_REBASE:
-            RCLCPP_INFO(get_logger(), "Scanning mine area");
-            change_state(MissionState::DO_FIELD_SCAN_GOTO);
-            break;
-
-        case MissionState::DO_FIELD_SCAN_GOTO:
+        case MissionState::DO_FIELD_REPOSITION:
             if (_next_field_to_scan >= NUM_FIELDS)
             {
                 RCLCPP_INFO(get_logger(), "All fields scanned");
-                change_state(MissionState::DO_RTL);
+                change_state(MissionState::DO_RTL_REPOSITION);
             }
             else
             {
-                RCLCPP_INFO(get_logger(), "Going to field %d", _next_field_to_scan);
-                double x = FIELD_COORDINATES[_next_field_to_scan][0];
-                double y = FIELD_COORDINATES[_next_field_to_scan][1];
-                double z = FIELD_SCAN_ALT;
-                enable_goto_setpoint(x, y, z);
+                RCLCPP_INFO(get_logger(), "Repositioning to field %d", _next_field_to_scan);
+                do_reposition(FIELD_WAYPOINTS[_next_field_to_scan][0], FIELD_WAYPOINTS[_next_field_to_scan][1], FIELD_REPOSITION_ALT);
                 change_state_after_condition(
-                    MissionState::DO_FIELD_SCAN_REBASE,
-                    std::bind(&MissionNode::reached_local_position, this, x, y, z));
+                    MissionState::DO_FIELD_DESCEND,
+                    std::bind(&MissionNode::reached_global_position, this, FIELD_WAYPOINTS[_next_field_to_scan][0], FIELD_WAYPOINTS[_next_field_to_scan][1], FIELD_REPOSITION_ALT));
             }
             break;
 
-        case MissionState::DO_FIELD_SCAN_REBASE:
-            RCLCPP_INFO(get_logger(), "Rebasing at field %d", _next_field_to_scan);
-            change_state(MissionState::DO_FIELD_SCAN_DETECT);
+        case MissionState::DO_FIELD_DESCEND:
+            RCLCPP_INFO(get_logger(), "Descending to field %d", _next_field_to_scan);
+            change_state(MissionState::DO_FIELD_DETECT);
             break;
 
-        case MissionState::DO_FIELD_SCAN_DETECT:
-            RCLCPP_INFO(get_logger(), "Detecting balls at field %d", _next_field_to_scan);
-            do_hold_mode();
+        case MissionState::DO_FIELD_DETECT:
+            RCLCPP_INFO(get_logger(), "Detecting ball at field %d", _next_field_to_scan);
             change_state(MissionState::DO_BALL_PICKUP_LAND);
             break;
 
         case MissionState::DO_BALL_PICKUP_LAND:
             RCLCPP_INFO(get_logger(), "Landing at field %d", _next_field_to_scan);
-            disable_goto_setpoint();
+            // disable_goto_setpoint();
             do_precision_land();
             change_state_after_condition(
                 MissionState::DO_BALL_PICKUP_GRAB,
@@ -311,13 +239,29 @@ private:
             RCLCPP_INFO(get_logger(), "Going to barrel");
             do_reposition(BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]);
             change_state_after_condition(
-                MissionState::DONE,
+                MissionState::DO_BARREL_DROP,
                 std::bind(&MissionNode::reached_global_position, this, BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]));
             break;
 
-        case MissionState::DO_RTL:
-            RCLCPP_INFO(get_logger(), "Returning to launch");
-            do_return_to_launch();
+        case MissionState::DO_BARREL_DROP:
+            RCLCPP_INFO(get_logger(), "Dropping ball at barrel");
+            // operate grabber
+            change_state_after(
+                MissionState::DO_RTL_REPOSITION,
+                GRABBER_DELAY);
+            break;
+
+        case MissionState::DO_RTL_REPOSITION:
+            RCLCPP_INFO(get_logger(), "RTL reposition");
+            do_reposition(LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1], LANDING_PAD_WAYPOINT[2]);
+            change_state_after_condition(
+                MissionState::DO_RTL_LAND,
+                std::bind(&MissionNode::reached_global_position, this, LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1], LANDING_PAD_WAYPOINT[2]));
+            break;
+
+        case MissionState::DO_RTL_LAND:
+            RCLCPP_INFO(get_logger(), "RTL landing");
+            do_land();
             change_state(MissionState::DONE);
             break;
 
@@ -465,6 +409,12 @@ private:
     {
         RCLCPP_INFO(get_logger(), "[CMD] Precision landing");
         send_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_PRECLAND);
+    }
+
+    void do_land()
+    {
+        RCLCPP_INFO(get_logger(), "[CMD] Landing");
+        send_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_LAND);
     }
 
     void on_mode_completed(const ModeCompleted::SharedPtr msg)
