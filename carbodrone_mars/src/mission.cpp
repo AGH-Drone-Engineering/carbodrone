@@ -21,6 +21,10 @@
 
 #include "mission_params.hpp"
 
+#include "yolocpp.hpp"
+
+#define YOLO_VISUALIZE 0
+
 using namespace std::chrono_literals;
 using px4_msgs::msg::VehicleCommand;
 using px4_msgs::msg::ModeCompleted;
@@ -75,22 +79,26 @@ enum PX4_CUSTOM_SUB_MODE_AUTO
     \
     X(DO_TAKEOFF)          \
     \
-    X(DO_FIELD_REPOSITION) \
-    X(DO_FIELD_DESCEND)    \
-    X(DO_FIELD_DETECT)     \
+    X(DO_FIELD_REPOSITION)       \
+    X(DO_FIELD_REPOSITION_DELAY) \
+    X(DO_FIELD_DESCENT)          \
+    X(DO_FIELD_DESCENT_DELAY)    \
+    X(DO_FIELD_DETECT)           \
     \
-    X(DO_BALL_PICKUP_LAND) \
-    X(DO_BALL_PICKUP_GRAB) \
+    X(DO_BALL_PICKUP_LAND)  \
+    X(DO_BALL_PICKUP_GRAB)  \
     \
-    X(DO_TAKEOFF_ARM)      \
+    X(DO_TAKEOFF_ARM)       \
     \
-    X(DO_BARREL_GOTO)      \
-    X(DO_BARREL_DROP)      \
+    X(DO_BARREL_GOTO)       \
+    X(DO_BARREL_GOTO_DELAY) \
+    X(DO_BARREL_DROP)       \
     \
-    X(DO_RTL_REPOSITION)   \
-    X(DO_RTL_LAND)         \
+    X(DO_RTL_REPOSITION)       \
+    X(DO_RTL_REPOSITION_DELAY) \
+    X(DO_RTL_LAND)             \
     \
-    X(DONE)                \
+    X(DONE) \
     X(NOOP)
 
 enum class MissionState
@@ -113,6 +121,8 @@ class MissionNode : public StateMachineNode
 public:
     MissionNode()
         : StateMachineNode("mission_node")
+        , _yolo_banner(YOLO_BANNER_640_PATH, 640, 640, {"banner"})
+        , _yolo_balls(YOLO_BALLS_640_PATH, 640, 640, {"blue", "green", "purple", "red"})
     {
         _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
@@ -194,14 +204,29 @@ private:
                 RCLCPP_INFO(get_logger(), "Repositioning to field %d", _next_field_to_scan);
                 do_reposition(FIELD_WAYPOINTS[_next_field_to_scan][0], FIELD_WAYPOINTS[_next_field_to_scan][1], FIELD_REPOSITION_ALT);
                 change_state_after_condition(
-                    MissionState::DO_FIELD_DESCEND,
+                    MissionState::DO_FIELD_REPOSITION_DELAY,
                     std::bind(&MissionNode::reached_global_position, this, FIELD_WAYPOINTS[_next_field_to_scan][0], FIELD_WAYPOINTS[_next_field_to_scan][1], FIELD_REPOSITION_ALT));
             }
             break;
 
-        case MissionState::DO_FIELD_DESCEND:
+        case MissionState::DO_FIELD_REPOSITION_DELAY:
+            change_state_after(
+                MissionState::DO_FIELD_DESCENT,
+                REPOSITION_DELAY);
+            break;
+
+        case MissionState::DO_FIELD_DESCENT:
             RCLCPP_INFO(get_logger(), "Descending to field %d", _next_field_to_scan);
-            change_state(MissionState::DO_FIELD_DETECT);
+            enable_field_descent();
+            change_state_after_condition(
+                MissionState::DO_FIELD_DESCENT_DELAY,
+                std::bind(&MissionNode::field_descent_completed, this));
+            break;
+
+        case MissionState::DO_FIELD_DESCENT_DELAY:
+            change_state_after(
+                MissionState::DO_FIELD_DETECT,
+                GOTO_DELAY);
             break;
 
         case MissionState::DO_FIELD_DETECT:
@@ -211,7 +236,7 @@ private:
 
         case MissionState::DO_BALL_PICKUP_LAND:
             RCLCPP_INFO(get_logger(), "Landing at field %d", _next_field_to_scan);
-            // disable_goto_setpoint();
+            disable_field_descent();
             do_precision_land();
             change_state_after_condition(
                 MissionState::DO_BALL_PICKUP_GRAB,
@@ -526,6 +551,36 @@ private:
         return t.transform.translation.z;
     }
 
+    Vector3d detect_field_descent_position()
+    {
+        return Vector3d(_local_position->x, _local_position->y, 2);
+    }
+
+    void enable_field_descent()
+    {
+        auto position = detect_field_descent_position();
+        _field_descent_position = std::make_unique<Vector3d>(position);
+        enable_goto_setpoint(position.x(), position.y(), position.z());
+    }
+
+    void disable_field_descent()
+    {
+        disable_goto_setpoint();
+        _field_descent_position.reset();
+    }
+
+    bool field_descent_completed()
+    {
+        if (!_field_descent_position)
+        {
+            return true;
+        }
+        return reached_local_position(
+            _field_descent_position->x(),
+            _field_descent_position->y(),
+            _field_descent_position->z());
+    }
+
     bool _is_armed = false;
     bool _takeoff_completed = false;
     int _next_field_to_scan = 0;
@@ -533,6 +588,8 @@ private:
     double _goto_setpoint_y = 0;
     double _goto_setpoint_z = 0;
     bool _goto_enabled = false;
+
+    std::unique_ptr<Vector3d> _field_descent_position;
 
     VehicleGlobalPosition::SharedPtr _global_position;
     VehicleLocalPosition::SharedPtr _local_position;
@@ -551,6 +608,9 @@ private:
     rclcpp::Subscription<VehicleStatus>::SharedPtr _vehicle_status_sub;
     rclcpp::Subscription<VehicleGlobalPosition>::SharedPtr _global_position_sub;
     rclcpp::Subscription<VehicleLocalPosition>::SharedPtr _local_position_sub;
+
+    YOLOCPP _yolo_banner;
+    YOLOCPP _yolo_balls;
 };
 
 int main(int argc, char *argv[])

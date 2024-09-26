@@ -26,6 +26,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 add_compile_definitions(YOLO_BALLS_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_balls_640.onnx")
+add_compile_definitions(YOLO_BANNER_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_banner_640.onnx")
 link_libraries(yolocpp)
 
 add_executable(ball_detector src/ball_detector.cpp)
