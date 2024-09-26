@@ -123,13 +123,13 @@ static constexpr double FIELD_SCAN_ALT = 2.0;
  */
 static constexpr int GRABBER_DELAY = 20;
 
-static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.001;
-static constexpr double GLOBAL_LON_ACCEPTANCE = 0.001;
-static constexpr float GLOBAL_ALT_ACCEPTANCE = 0.5;
+static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.000004;
+static constexpr double GLOBAL_LON_ACCEPTANCE = 0.000007;
+static constexpr float GLOBAL_ALT_ACCEPTANCE = 1.0;
 
 static constexpr double LOCAL_XY_ACCEPTANCE = 0.1;
 static constexpr double LOCAL_Z_ACCEPTANCE = 0.1;
-static constexpr double VEL_ACCEPANCE = 0.5;
+static constexpr double VEL_ACCEPANCE = 0.2;
 
 static constexpr int REPOSITION_DELAY = 40;
 static constexpr int GOTO_DELAY = 40;

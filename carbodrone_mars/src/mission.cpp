@@ -90,8 +90,8 @@ enum PX4_CUSTOM_SUB_MODE_AUTO
     \
     X(DO_TAKEOFF_ARM)       \
     \
-    X(DO_BARREL_GOTO)       \
-    X(DO_BARREL_GOTO_DELAY) \
+    X(DO_BARREL_REPOSITION)       \
+    X(DO_BARREL_REPOSITION_DELAY) \
     X(DO_BARREL_DROP)       \
     \
     X(DO_RTL_REPOSITION)       \
@@ -255,17 +255,23 @@ private:
             do_arm();
             do_takeoff(MISSION_START_ALT);
             _takeoff_completed = false;
-            change_state_after_condition(MissionState::DO_BARREL_GOTO, [this](){
+            change_state_after_condition(MissionState::DO_BARREL_REPOSITION, [this](){
                 return _takeoff_completed;
             });
             break;
 
-        case MissionState::DO_BARREL_GOTO:
+        case MissionState::DO_BARREL_REPOSITION:
             RCLCPP_INFO(get_logger(), "Going to barrel");
             do_reposition(BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]);
             change_state_after_condition(
-                MissionState::DO_BARREL_DROP,
+                MissionState::DO_BARREL_REPOSITION_DELAY,
                 std::bind(&MissionNode::reached_global_position, this, BARREL_WAYPOINT[0], BARREL_WAYPOINT[1], BARREL_WAYPOINT[2]));
+            break;
+
+        case MissionState::DO_BARREL_REPOSITION_DELAY:
+            change_state_after(
+                MissionState::DO_BARREL_DROP,
+                REPOSITION_DELAY);
             break;
 
         case MissionState::DO_BARREL_DROP:
@@ -280,8 +286,14 @@ private:
             RCLCPP_INFO(get_logger(), "RTL reposition");
             do_reposition(LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1], LANDING_PAD_WAYPOINT[2]);
             change_state_after_condition(
-                MissionState::DO_RTL_LAND,
+                MissionState::DO_RTL_REPOSITION_DELAY,
                 std::bind(&MissionNode::reached_global_position, this, LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1], LANDING_PAD_WAYPOINT[2]));
+            break;
+
+        case MissionState::DO_RTL_REPOSITION_DELAY:
+            change_state_after(
+                MissionState::DO_RTL_LAND,
+                REPOSITION_DELAY);
             break;
 
         case MissionState::DO_RTL_LAND:
