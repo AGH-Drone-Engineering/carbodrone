@@ -47,7 +47,7 @@
  * The drone will land here after the mission.
  * The lat/lon will be ignored if INITIALIZE_LANDING_PAD_AFTER_MISSION_START is true.
  */
-static const double LANDING_PAD_WAYPOINT[3] = {0, 0, 10.0};
+static const double LANDING_PAD_WAYPOINT[3] = {0, 0, 6.0};
 
 /**
  * If true, the landing pad location will be set based on the GPS position of the drone after starting the mission.
@@ -58,7 +58,7 @@ static constexpr bool INITIALIZE_LANDING_PAD_AFTER_MISSION_START = true;
  * Barrel lat, lon, approach altitude.
  * The drone will fly to this point when dropping off the balls.
  */
-static const double BARREL_WAYPOINT[3] = {47.398132805733496, 8.54616487844852, 10.0};
+static const double BARREL_WAYPOINT[3] = {47.398132805733496, 8.54616487844852, 8.0};
 
 /**
  * White banner (called a "field") waypoints.
@@ -104,13 +104,18 @@ static constexpr int NUM_FIELDS = 9;
 /**
  * The drone will take off to this altitude.
  */
-static constexpr double MISSION_START_ALT = 10.0;
+static constexpr double MISSION_START_ALT = 6.0;
+
+/**
+ * The drone will fly to white banners at this altitude.
+ */
+static constexpr double FIELD_REPOSITION_ALT = 6.0;
 
 /**
  * The drone will descend to this altitude when scanning a field.
  * It will use the camera to stay above the white banner.
  */
-static constexpr double FIELD_SCAN_ALT = 3.0;
+static constexpr double FIELD_SCAN_ALT = 2.0;
 
 /**
  * Time needed for the grabber to open and close.
