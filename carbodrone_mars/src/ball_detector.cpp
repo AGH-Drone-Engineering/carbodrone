@@ -18,12 +18,16 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "px4_msgs/msg/landing_target_pose.hpp"
 
+#include "yolocpp.hpp"
+
 using namespace std::chrono_literals;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using px4_ros_com::frame_transforms::enu_to_ned_local_frame;
 
 #define ESTIMATE_DISTANCE_FROM_DIAMETER 1
+#define USE_YOLO 1
+#define VISUALIZE_DETECTIONS 0
 
 class BallDetector : public rclcpp::Node
 {
@@ -40,6 +44,9 @@ public:
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2)))
+#if USE_YOLO
+        , yolo(YOLO_BALLS_640_PATH, 640, 640, {"blue", "green", "purple", "red"})
+#endif
     {
         _tf_buf = std::make_shared<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_shared<tf2_ros::TransformListener>(*_tf_buf);
@@ -57,6 +64,40 @@ private:
         auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
         const auto &img = img_ptr->image;
 
+#if USE_YOLO
+        double img_cx = img.cols / 2;
+        double img_cy = img.rows / 2;
+        double best_x;
+        double best_y;
+        double best_area = -1;
+        double best_distance = 1e9;
+        const auto detections = yolo.detect(img.data, img.cols, img.rows, img.channels());
+        for (const auto &detection : detections)
+        {
+            double area = detection.w * detection.h;
+            double x = detection.x + detection.w / 2;
+            double y = detection.y + detection.h / 2;
+            double distance = std::sqrt((x - img_cx) * (x - img_cx) + (y - img_cy) * (y - img_cy));
+            if (distance < best_distance)
+            {
+                best_x = x;
+                best_y = y;
+                best_area = area;
+                best_distance = distance;
+            }
+        }
+
+#if VISUALIZE_DETECTIONS
+        cv::Mat canvas = img.clone();
+        for (const auto &detection : detections)
+        {
+            cv::rectangle(canvas, cv::Rect(detection.x, detection.y, detection.w, detection.h), cv::Scalar(0, 255, 0), 2);
+        }
+        cv::resize(canvas, canvas, cv::Size(), 0.5, 0.5);
+        cv::imshow("Detections", canvas);
+        cv::waitKey(1);
+#endif
+#else
         cv::Mat img_hsv;
         cv::cvtColor(img, img_hsv, cv::COLOR_BGR2HSV);
 
@@ -86,6 +127,7 @@ private:
                 best_distance = distance;
             }
         }
+#endif
 
         if (best_area < 0)
             return;
@@ -166,6 +208,10 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
 
     image_geometry::PinholeCameraModel _cam_model;
+
+#if USE_YOLO
+    YOLOCPP yolo;
+#endif
 };
 
 int main(int argc, char *argv[])

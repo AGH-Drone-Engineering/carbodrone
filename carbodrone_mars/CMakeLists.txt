@@ -25,6 +25,9 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
+add_compile_definitions(YOLO_BALLS_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_balls_640.onnx")
+link_libraries(yolocpp)
+
 add_executable(ball_detector src/ball_detector.cpp)
 ament_target_dependencies(ball_detector rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros image_geometry image_transport)
 target_link_libraries(ball_detector ${OpenCV_LIBS})
