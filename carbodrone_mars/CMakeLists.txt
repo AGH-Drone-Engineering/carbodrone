@@ -24,6 +24,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(std_srvs REQUIRED)
 
 add_compile_definitions(YOLO_BALLS_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_balls_640.onnx")
 add_compile_definitions(YOLO_BANNER_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_banner_640.onnx")
@@ -34,7 +35,7 @@ ament_target_dependencies(ball_detector rclcpp px4_ros_com sensor_msgs geometry_
 target_link_libraries(ball_detector ${OpenCV_LIBS})
 
 add_executable(mission_node src/mission.cpp)
-ament_target_dependencies(mission_node rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros image_geometry image_transport)
+ament_target_dependencies(mission_node rclcpp px4_ros_com sensor_msgs geometry_msgs cv_bridge px4_msgs tf2 tf2_ros image_geometry image_transport std_srvs)
 target_include_directories(mission_node PRIVATE src)
 
 install(TARGETS

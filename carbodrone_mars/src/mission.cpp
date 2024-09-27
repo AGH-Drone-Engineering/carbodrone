@@ -17,6 +17,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "std_srvs/srv/set_bool.hpp"
 
 #include "px4_ros_com/frame_transforms.h"
 
@@ -181,6 +182,8 @@ public:
         _target_pub = create_publisher<LandingTargetPose>(
             "/fmu/in/landing_target_pose", rclcpp::SensorDataQoS());
 
+        _grabber_client = create_client<std_srvs::srv::SetBool>("change_gripper_state");
+
         _offboard_timer = create_wall_timer(
             100ms,
             std::bind(&MissionNode::offboard_loop, this));
@@ -289,6 +292,7 @@ private:
             enable_ball_detection();
             process_ball_detection();
             do_precision_land();
+            open_grabber();
             change_state_after_condition(
                 MissionState::DO_BALL_PICKUP_GRAB,
                 std::bind(&MissionNode::landing_completed, this));
@@ -299,6 +303,7 @@ private:
             RCLCPP_INFO(get_logger(), "Grabbing ball at field %d", _next_field_to_scan);
             _field_picked_up[_next_field_to_scan] = true;
             _last_picked_up_prio = _color_prio[_scanned_fields[_next_field_to_scan]];
+            close_grabber();
             change_state_after(
                 MissionState::DO_TAKEOFF_ARM,
                 GRABBER_DELAY);
@@ -330,7 +335,7 @@ private:
 
         case MissionState::DO_BARREL_DROP:
             RCLCPP_INFO(get_logger(), "Dropping ball at barrel");
-            // operate grabber
+            open_grabber();
             change_state_after(
                 MissionState::DO_FIELD_REPOSITION,
                 GRABBER_DELAY);
@@ -914,6 +919,22 @@ private:
         }
     }
 
+    void open_grabber()
+    {
+        auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+        request->data = true;
+
+        _grabber_client->async_send_request(request);
+    }
+
+    void close_grabber()
+    {
+        auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+        request->data = false;
+
+        _grabber_client->async_send_request(request);
+    }
+
     bool _is_armed = false;
     bool _takeoff_completed = false;
     int _next_field_to_scan = 0;
@@ -943,6 +964,8 @@ private:
     rclcpp::Subscription<VehicleLocalPosition>::SharedPtr _local_position_sub;
 
     rclcpp::Publisher<px4_msgs::msg::LandingTargetPose>::SharedPtr _target_pub;
+    
+    rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr _grabber_client;
 
     rclcpp::Node::SharedPtr _nh;
 
