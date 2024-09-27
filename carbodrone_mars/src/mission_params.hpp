@@ -123,12 +123,12 @@ static constexpr double FIELD_SCAN_ALT = 2.0;
  */
 static constexpr int GRABBER_DELAY = 20;
 
-static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.000004;
-static constexpr double GLOBAL_LON_ACCEPTANCE = 0.000007;
+static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.000009;
+static constexpr double GLOBAL_LON_ACCEPTANCE = 0.000015;
 static constexpr float GLOBAL_ALT_ACCEPTANCE = 1.0;
 
-static constexpr double LOCAL_XY_ACCEPTANCE = 0.1;
-static constexpr double LOCAL_Z_ACCEPTANCE = 0.1;
+static constexpr double LOCAL_XY_ACCEPTANCE = 0.5;
+static constexpr double LOCAL_Z_ACCEPTANCE = 0.5;
 static constexpr double VEL_ACCEPANCE = 0.2;
 
 static constexpr int REPOSITION_DELAY = 40;
@@ -142,7 +142,7 @@ static constexpr int GOTO_DELAY = 40;
  * * 2 = purple
  * * 3 = red
  */
-static const int BALL_COLOR_PICKUP_ORDER[3] = { 1, 2, 3 };
+static const int BALL_COLOR_PICKUP_ORDER[3] = { 0, 2, 3 };
 
 /**
  * Override the color of the balls on specific fields.
@@ -154,16 +154,16 @@ static const int BALL_COLOR_PICKUP_ORDER[3] = { 1, 2, 3 };
  */
 static const int BALL_COLOR_OVERRIDE[9] = {
     1,
-    2,
-    1,
-
-    1,
-    1,
-    3,
-
-    1,
     1,
     0,
+
+    3,
+    1,
+    1,
+
+    1,
+    2,
+    1,
 };
 
 /**

@@ -101,6 +101,10 @@ enum PX4_CUSTOM_SUB_MODE_AUTO
     X(DONE) \
     X(NOOP)
 
+static constexpr int FIELD_NOT_SCANNED = -1;
+static constexpr int NUM_COLORS = 4;
+static constexpr int PRIO_IGNORE = -100;
+
 enum class MissionState
 {
 #define X(name) name,
@@ -124,6 +128,8 @@ public:
         , _yolo_banner(YOLO_BANNER_640_PATH, 640, 640, {"banner"})
         , _yolo_balls(YOLO_BALLS_640_PATH, 640, 640, {"blue", "green", "purple", "red"})
     {
+        initialize_scanned_fields();
+
         _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
         _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
@@ -194,6 +200,7 @@ private:
             break;
 
         case MissionState::DO_FIELD_REPOSITION:
+            _next_field_to_scan = decide_next_field_to_scan();
             if (_next_field_to_scan >= NUM_FIELDS)
             {
                 RCLCPP_INFO(get_logger(), "All fields scanned");
@@ -231,7 +238,31 @@ private:
 
         case MissionState::DO_FIELD_DETECT:
             RCLCPP_INFO(get_logger(), "Detecting ball at field %d", _next_field_to_scan);
-            change_state(MissionState::DO_BALL_PICKUP_LAND);
+            {
+                int color = detect_ball_color();
+                _scanned_fields[_next_field_to_scan] = color;
+                if (color == _ignored_color)
+                {
+                    RCLCPP_INFO(get_logger(), "Detected ignored color at field %d, skipping", _next_field_to_scan);
+                    disable_field_descent();
+                    change_state(MissionState::DO_FIELD_REPOSITION);
+                }
+                else
+                {
+                    RCLCPP_INFO(get_logger(), "Detected ball color %d at field %d", color, _next_field_to_scan);
+                    if (should_pickup_ball(color))
+                    {
+                        RCLCPP_INFO(get_logger(), "Correct color detected, landing");
+                        change_state(MissionState::DO_BALL_PICKUP_LAND);
+                    }
+                    else
+                    {
+                        RCLCPP_INFO(get_logger(), "Incorrect color detected, skipping");
+                        disable_field_descent();
+                        change_state(MissionState::DO_FIELD_REPOSITION);
+                    }
+                }
+            }
             break;
 
         case MissionState::DO_BALL_PICKUP_LAND:
@@ -245,6 +276,8 @@ private:
 
         case MissionState::DO_BALL_PICKUP_GRAB:
             RCLCPP_INFO(get_logger(), "Grabbing ball at field %d", _next_field_to_scan);
+            _field_picked_up[_next_field_to_scan] = true;
+            _last_picked_up_prio = _color_prio[_scanned_fields[_next_field_to_scan]];
             change_state_after(
                 MissionState::DO_TAKEOFF_ARM,
                 GRABBER_DELAY);
@@ -278,7 +311,7 @@ private:
             RCLCPP_INFO(get_logger(), "Dropping ball at barrel");
             // operate grabber
             change_state_after(
-                MissionState::DO_RTL_REPOSITION,
+                MissionState::DO_FIELD_REPOSITION,
                 GRABBER_DELAY);
             break;
 
@@ -565,7 +598,7 @@ private:
 
     Vector3d detect_field_descent_position()
     {
-        return Vector3d(_local_position->x, _local_position->y, 2);
+        return ned_to_enu_local_frame(Vector3d(_local_position->x, _local_position->y, -2));
     }
 
     void enable_field_descent()
@@ -591,6 +624,55 @@ private:
             _field_descent_position->x(),
             _field_descent_position->y(),
             _field_descent_position->z());
+    }
+
+    void initialize_scanned_fields()
+    {
+        _scanned_fields.fill(FIELD_NOT_SCANNED);
+        _color_prio.fill(PRIO_IGNORE);
+        for (int i = 0; i < NUM_COLORS - 1; i++)
+        {
+            _color_prio[BALL_COLOR_PICKUP_ORDER[i]] = -i;
+        }
+        for (int i = 0; i < NUM_COLORS; i++)
+        {
+            if (_color_prio[i] == PRIO_IGNORE)
+            {
+                _ignored_color = i;
+                break;
+            }
+        }
+    }
+
+    int detect_ball_color()
+    {
+        return BALL_COLOR_OVERRIDE[_next_field_to_scan];
+    }
+
+    bool should_pickup_ball(int color)
+    {
+        return _color_prio[color] == (_last_picked_up_prio - 1);
+    }
+
+    int decide_next_field_to_scan()
+    {
+        for (int i = 0; i < NUM_FIELDS; i++)
+        {
+            if (!_field_picked_up[i] && _scanned_fields[i] != FIELD_NOT_SCANNED && should_pickup_ball(_scanned_fields[i]))
+            {
+                RCLCPP_INFO(get_logger(), "Going to correct known color at field %d", i);
+                return i;
+            }
+        }
+        for (int i = 0; i < NUM_FIELDS; i++)
+        {
+            if (_scanned_fields[i] == FIELD_NOT_SCANNED)
+            {
+                RCLCPP_INFO(get_logger(), "Going to unknown color at field %d", i);
+                return i;
+            }
+        }
+        return NUM_FIELDS;
     }
 
     bool _is_armed = false;
@@ -623,6 +705,13 @@ private:
 
     YOLOCPP _yolo_banner;
     YOLOCPP _yolo_balls;
+
+    std::array<int, NUM_FIELDS> _scanned_fields;
+    std::array<bool, NUM_FIELDS> _field_picked_up;
+    std::array<int, NUM_COLORS> _color_prio;
+    int _ignored_color;
+
+    int _last_picked_up_prio = 1;
 };
 
 int main(int argc, char *argv[])
