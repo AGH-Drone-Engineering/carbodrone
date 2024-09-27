@@ -239,7 +239,8 @@ private:
 
         case MissionState::DO_FIELD_REPOSITION_DELAY:
             change_state_after(
-                MissionState::DO_FIELD_DESCENT,
+                // MissionState::DO_FIELD_DESCENT,
+                MissionState::DO_FIELD_DETECT,
                 REPOSITION_DELAY);
             break;
 

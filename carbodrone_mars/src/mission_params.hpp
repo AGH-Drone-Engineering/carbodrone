@@ -58,7 +58,7 @@ static constexpr bool INITIALIZE_LANDING_PAD_AFTER_MISSION_START = true;
  * Barrel lat, lon, approach altitude.
  * The drone will fly to this point when dropping off the balls.
  */
-static const double BARREL_WAYPOINT[3] = {47.398132805733496, 8.54616487844852, 8.0};
+static const double BARREL_WAYPOINT[3] = {47.398132805733496, 8.54616487844852, 6.0};
 
 /**
  * White banner (called a "field") waypoints.
@@ -115,7 +115,7 @@ static constexpr double MISSION_START_ALT = 6.0;
 /**
  * The drone will fly to white banners at this altitude.
  */
-static constexpr double FIELD_REPOSITION_ALT = 6.0;
+static constexpr double FIELD_REPOSITION_ALT = 4.0;
 
 /**
  * The drone will descend to this altitude when scanning a field.
