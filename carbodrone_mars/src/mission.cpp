@@ -9,6 +9,15 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 
+#include "cv_bridge/cv_bridge.h"
+#include "opencv2/opencv.hpp"
+#include "image_geometry/pinhole_camera_model.h"
+#include "image_transport/image_transport.hpp"
+
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+
 #include "px4_ros_com/frame_transforms.h"
 
 #include "px4_msgs/msg/vehicle_command.hpp"
@@ -18,11 +27,13 @@
 #include "px4_msgs/msg/vehicle_local_position.hpp"
 #include "px4_msgs/msg/offboard_control_mode.hpp"
 #include "px4_msgs/msg/goto_setpoint.hpp"
+#include "px4_msgs/msg/landing_target_pose.hpp"
 
 #include "mission_params.hpp"
 
 #include "yolocpp.hpp"
 
+#define USE_YOLO 1
 #define YOLO_VISUALIZE 0
 
 using namespace std::chrono_literals;
@@ -33,6 +44,7 @@ using px4_msgs::msg::VehicleGlobalPosition;
 using px4_msgs::msg::VehicleLocalPosition;
 using px4_msgs::msg::OffboardControlMode;
 using px4_msgs::msg::GotoSetpoint;
+using px4_msgs::msg::LandingTargetPose;
 using px4_ros_com::frame_transforms::ned_to_enu_local_frame;
 using px4_ros_com::frame_transforms::enu_to_ned_local_frame;
 using px4_ros_com::frame_transforms::aircraft_to_baselink_body_frame;
@@ -125,6 +137,9 @@ class MissionNode : public StateMachineNode
 public:
     MissionNode()
         : StateMachineNode("mission_node")
+        , _nh(std::shared_ptr<MissionNode>(this, [](auto*){}))
+        , _it(_nh)
+        , _image_sub(_it.subscribe("/camera/image", 1, std::bind(&MissionNode::image_callback, this, std::placeholders::_1)))
         , _yolo_banner(YOLO_BANNER_640_PATH, 640, 640, {"banner"})
         , _yolo_balls(YOLO_BALLS_640_PATH, 640, 640, {"blue", "green", "purple", "red"})
     {
@@ -162,6 +177,9 @@ public:
             "/fmu/out/vehicle_local_position",
             rclcpp::SensorDataQoS(),
             std::bind(&MissionNode::on_local_position, this, std::placeholders::_1));
+
+        _target_pub = create_publisher<LandingTargetPose>(
+            "/fmu/in/landing_target_pose", rclcpp::SensorDataQoS());
 
         _offboard_timer = create_wall_timer(
             100ms,
@@ -268,6 +286,8 @@ private:
         case MissionState::DO_BALL_PICKUP_LAND:
             RCLCPP_INFO(get_logger(), "Landing at field %d", _next_field_to_scan);
             disable_field_descent();
+            enable_ball_detection();
+            process_ball_detection();
             do_precision_land();
             change_state_after_condition(
                 MissionState::DO_BALL_PICKUP_GRAB,
@@ -275,6 +295,7 @@ private:
             break;
 
         case MissionState::DO_BALL_PICKUP_GRAB:
+            disable_ball_detection();
             RCLCPP_INFO(get_logger(), "Grabbing ball at field %d", _next_field_to_scan);
             _field_picked_up[_next_field_to_scan] = true;
             _last_picked_up_prio = _color_prio[_scanned_fields[_next_field_to_scan]];
@@ -592,7 +613,7 @@ private:
 
     double get_ground_z()
     {
-        auto t = _tf_buf->lookupTransform("odom", "ground", tf2::TimePointZero, 50ms);
+        auto t = _tf_buf->lookupTransform("odom", "ground", tf2::TimePointZero, 100ms);
         return t.transform.translation.z;
     }
 
@@ -675,6 +696,224 @@ private:
         return NUM_FIELDS;
     }
 
+    void enable_ball_detection()
+    {
+        _ball_detection_enabled = true;
+    }
+
+    void disable_ball_detection()
+    {
+        _ball_detection_enabled = false;
+#if VISUALIZE_DETECTIONS
+        cv::destroyWindow("Detections");
+#endif
+    }
+
+    void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
+    {
+        _current_image = img_in;
+
+        if (_ball_detection_enabled)
+        {
+            process_ball_detection();
+        }
+    }
+
+    void process_ball_detection()
+    {
+        const auto &img_in = _current_image;
+
+        rclcpp::Time time = img_in->header.stamp;
+
+        auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
+        const auto &img = img_ptr->image;
+
+#if USE_YOLO
+        double img_cx = img.cols / 2;
+        double img_cy = img.rows / 2;
+        double best_x;
+        double best_y;
+        double best_area = -1;
+        double best_distance = 1e9;
+        const auto detections = _yolo_balls.detect(img.data, img.cols, img.rows, img.channels());
+        for (const auto &detection : detections)
+        {
+            double area = detection.w * detection.h;
+            double x = detection.x + detection.w / 2;
+            double y = detection.y + detection.h / 2;
+            double distance = std::sqrt((x - img_cx) * (x - img_cx) + (y - img_cy) * (y - img_cy));
+            if (distance < best_distance)
+            {
+                best_x = x;
+                best_y = y;
+                best_area = area;
+                best_distance = distance;
+            }
+        }
+
+#if VISUALIZE_DETECTIONS
+        cv::Mat canvas = img.clone();
+        for (const auto &detection : detections)
+        {
+            cv::rectangle(canvas, cv::Rect(detection.x, detection.y, detection.w, detection.h), cv::Scalar(0, 255, 0), 2);
+        }
+        cv::resize(canvas, canvas, cv::Size(), 0.5, 0.5);
+        cv::imshow("Detections", canvas);
+        cv::waitKey(1);
+#endif
+#else
+        cv::Mat img_hsv;
+        cv::cvtColor(img, img_hsv, cv::COLOR_BGR2HSV);
+
+        cv::Mat threshold;
+        cv::inRange(img_hsv, cv::Scalar(27, 100, 79), cv::Scalar(34, 255, 255), threshold);
+
+        cv::Mat labels, stats, centroids;
+        int numComponents = cv::connectedComponentsWithStats(threshold, labels, stats, centroids);
+
+        double img_cx = img.cols / 2;
+        double img_cy = img.rows / 2;
+        double best_x;
+        double best_y;
+        double best_area = -1;
+        double best_distance = 1e9;
+        for (int i = 1; i < numComponents; ++i)
+        {
+            double area = stats.at<int>(i, cv::CC_STAT_AREA);
+            double x = centroids.at<double>(i, 0);
+            double y = centroids.at<double>(i, 1);
+            double distance = std::sqrt((x - img_cx) * (x - img_cx) + (y - img_cy) * (y - img_cy));
+            if (distance < best_distance)
+            {
+                best_x = x;
+                best_y = y;
+                best_area = area;
+                best_distance = distance;
+            }
+        }
+#endif
+
+        if (best_area < 0)
+            return;
+
+        sensor_msgs::msg::CameraInfo cam_info;
+        cam_info.header = img_in->header;
+        cam_info.height = img.rows;
+        cam_info.width = img.cols;
+        cam_info.distortion_model = "plumb_bob";
+
+        cam_info.d.resize(5);
+        cam_info.d[0] = 0.0;
+        cam_info.d[1] = 0.0;
+        cam_info.d[2] = 0.0;
+        cam_info.d[3] = 0.0;
+        cam_info.d[4] = 0.0;
+
+        cam_info.k[0] = CAMERA_FOCAL_LENGTH_PX;
+        cam_info.k[1] = 0.0;
+        cam_info.k[2] = img_cx;
+        cam_info.k[3] = 0.0;
+        cam_info.k[4] = CAMERA_FOCAL_LENGTH_PX;
+        cam_info.k[5] = img_cy;
+        cam_info.k[6] = 0.0;
+        cam_info.k[7] = 0.0;
+        cam_info.k[8] = 1.0;
+
+        cam_info.r[0] = 1.0;
+        cam_info.r[1] = 0.0;
+        cam_info.r[2] = 0.0;
+        cam_info.r[3] = 0.0;
+        cam_info.r[4] = 1.0;
+        cam_info.r[5] = 0.0;
+        cam_info.r[6] = 0.0;
+        cam_info.r[7] = 0.0;
+        cam_info.r[8] = 1.0;
+
+        cam_info.p[0] = CAMERA_FOCAL_LENGTH_PX;
+        cam_info.p[1] = 0.0;
+        cam_info.p[2] = img_cx;
+        cam_info.p[3] = 0.0;
+        cam_info.p[4] = 0.0;
+        cam_info.p[5] = CAMERA_FOCAL_LENGTH_PX;
+        cam_info.p[6] = img_cy;
+        cam_info.p[7] = 0.0;
+        cam_info.p[8] = 0.0;
+        cam_info.p[9] = 0.0;
+        cam_info.p[10] = 1.0;
+        cam_info.p[11] = 0.0;
+
+        cam_info.binning_x = 0;
+        cam_info.binning_y = 0;
+        cam_info.roi.x_offset = 0;
+        cam_info.roi.y_offset = 0;
+        cam_info.roi.height = 0;
+        cam_info.roi.width = 0;
+        cam_info.roi.do_rectify = false;
+
+        _cam_model.fromCameraInfo(cam_info);
+
+        cv::Point2d uv_raw(best_x, best_y);
+        auto uv = _cam_model.rectifyPoint(uv_raw);
+        auto ray = _cam_model.projectPixelTo3dRay(uv);
+
+#if ESTIMATE_DISTANCE_FROM_DIAMETER
+        const double ball_diameter_mm = 70.0;
+        const double ball_diameter_pixels = 2.0 * std::sqrt(best_area / M_PI);
+        const double focal_length = (_cam_model.fx() + _cam_model.fy()) * 0.5;
+        const double dist_bottom = (ball_diameter_mm / 1000.0) * focal_length / ball_diameter_pixels;
+#else
+        double dist_bottom;
+        try
+        {
+            auto t = _tf_buf->lookupTransform(
+                "ground", img_in->header.frame_id, time, 100ms);
+            dist_bottom = t.transform.translation.z;
+        }
+        catch (const tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not get height above ground");
+            return;
+        }
+#endif
+
+        geometry_msgs::msg::TransformStamped cam2target;
+        cam2target.header.stamp = time;
+        cam2target.header.frame_id = img_in->header.frame_id;
+        cam2target.child_frame_id = "landing_target";
+
+        cam2target.transform.translation.x = ray.x * dist_bottom;
+        cam2target.transform.translation.y = ray.y * dist_bottom;
+        cam2target.transform.translation.z = ray.z * dist_bottom;
+
+        _tf_broadcaster->sendTransform(std::move(cam2target));
+
+        try
+        {
+            auto local2target = _tf_buf->lookupTransform(
+                "odom", "landing_target", cam2target.header.stamp, 100ms);
+
+            auto target_pos = enu_to_ned_local_frame(Vector3d(
+                local2target.transform.translation.x,
+                local2target.transform.translation.y,
+                local2target.transform.translation.z));
+
+            px4_msgs::msg::LandingTargetPose target;
+            target.timestamp = static_cast<uint64_t>(local2target.header.stamp.sec) * 1000000ULL + static_cast<uint64_t>(local2target.header.stamp.nanosec) / 1000ULL;
+            target.abs_pos_valid = true;
+            target.rel_pos_valid = false;
+            target.rel_vel_valid = false;
+            target.is_static = true;
+            target.x_abs = target_pos.x();
+            target.y_abs = target_pos.y();
+            target.z_abs = target_pos.z();
+            _target_pub->publish(std::move(target));
+        }
+        catch (const tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not get local2target transform");
+        }
+    }
+
     bool _is_armed = false;
     bool _takeoff_completed = false;
     int _next_field_to_scan = 0;
@@ -703,6 +942,13 @@ private:
     rclcpp::Subscription<VehicleGlobalPosition>::SharedPtr _global_position_sub;
     rclcpp::Subscription<VehicleLocalPosition>::SharedPtr _local_position_sub;
 
+    rclcpp::Publisher<px4_msgs::msg::LandingTargetPose>::SharedPtr _target_pub;
+
+    rclcpp::Node::SharedPtr _nh;
+
+    image_transport::ImageTransport _it;
+    image_transport::Subscriber _image_sub;
+
     YOLOCPP _yolo_banner;
     YOLOCPP _yolo_balls;
 
@@ -712,6 +958,11 @@ private:
     int _ignored_color;
 
     int _last_picked_up_prio = 1;
+
+    bool _ball_detection_enabled = false;
+
+    sensor_msgs::msg::Image::ConstSharedPtr _current_image;
+    image_geometry::PinholeCameraModel _cam_model;
 };
 
 int main(int argc, char *argv[])

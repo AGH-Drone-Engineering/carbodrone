@@ -12,12 +12,4 @@ def generate_launch_description():
             name='mission_node',
             output='screen',
         ),
-
-        Node(
-            package='carbodrone_mars',
-            executable='ball_detector',
-            name='ball_detector',
-            output='screen',
-            respawn=True,
-        ),
     ])

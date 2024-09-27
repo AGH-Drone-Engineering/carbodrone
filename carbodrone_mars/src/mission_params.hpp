@@ -102,6 +102,12 @@ static const double FIELD_WAYPOINTS[9][2] = {
 static constexpr int NUM_FIELDS = 9;
 
 /**
+ * Focal length of the camera in pixels.
+ * This is used to calculate the distance to the target.
+ */
+static constexpr double CAMERA_FOCAL_LENGTH_PX = 1397.2235870361328;
+
+/**
  * The drone will take off to this altitude.
  */
 static constexpr double MISSION_START_ALT = 6.0;
@@ -123,8 +129,8 @@ static constexpr double FIELD_SCAN_ALT = 2.0;
  */
 static constexpr int GRABBER_DELAY = 20;
 
-static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.000009;
-static constexpr double GLOBAL_LON_ACCEPTANCE = 0.000015;
+static constexpr double GLOBAL_LAT_ACCEPTANCE = 0.00001;
+static constexpr double GLOBAL_LON_ACCEPTANCE = 0.000016;
 static constexpr float GLOBAL_ALT_ACCEPTANCE = 1.0;
 
 static constexpr double LOCAL_XY_ACCEPTANCE = 0.5;

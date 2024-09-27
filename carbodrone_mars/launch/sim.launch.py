@@ -21,13 +21,4 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
         ),
-
-        Node(
-            package='carbodrone_mars',
-            executable='ball_detector',
-            name='ball_detector',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
-            respawn=True,
-        ),
     ])
