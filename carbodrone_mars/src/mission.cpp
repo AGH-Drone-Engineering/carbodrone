@@ -673,7 +673,33 @@ private:
 
     int detect_ball_color()
     {
-        return BALL_COLOR_OVERRIDE[_next_field_to_scan];
+        if (USE_BALL_COLOR_OVERRIDE)
+        {
+            return BALL_COLOR_OVERRIDE[_next_field_to_scan];
+        }
+
+        const auto &img_in = _current_image;
+
+        auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
+        const auto &img = img_ptr->image;
+
+        double img_cx = img.cols / 2;
+        double img_cy = img.rows / 2;
+        int best_color = _ignored_color;
+        double best_distance = 1e9;
+        const auto detections = _yolo_balls.detect(img.data, img.cols, img.rows, img.channels());
+        for (const auto &detection : detections)
+        {
+            double x = detection.x + detection.w / 2;
+            double y = detection.y + detection.h / 2;
+            double distance = std::sqrt((x - img_cx) * (x - img_cx) + (y - img_cy) * (y - img_cy));
+            if (distance < best_distance)
+            {
+                best_distance = distance;
+                best_color = detection.class_id;
+            }
+        }
+        return best_color;
     }
 
     bool should_pickup_ball(int color)
