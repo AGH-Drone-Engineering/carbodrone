@@ -31,6 +31,7 @@
 #include "px4_msgs/msg/landing_target_pose.hpp"
 
 #include "mission_params.hpp"
+#include "map_uploader.hpp"
 
 #include "yolocpp.hpp"
 
@@ -187,6 +188,10 @@ public:
         _offboard_timer = create_wall_timer(
             100ms,
             std::bind(&MissionNode::offboard_loop, this));
+
+        _map_uploader_timer = create_wall_timer(
+            MAP_UPLOADER_DELAY_MS * 1ms,
+            std::bind(&MissionNode::map_uploader_loop, this));
     }
 
 private:
@@ -962,6 +967,36 @@ private:
         _grabber_client->async_send_request(request);
     }
 
+    void map_uploader_loop()
+    {
+        std::vector<MapUploader::Object> objects;
+        objects.emplace_back("drone", _global_position->lat, _global_position->lon);
+        objects.emplace_back("landing_pad", LANDING_PAD_WAYPOINT[0], LANDING_PAD_WAYPOINT[1]);
+        objects.emplace_back("barrel", BARREL_WAYPOINT[0], BARREL_WAYPOINT[1]);
+        for (int i = 0; i < NUM_FIELDS; i++)
+        {
+            switch (_scanned_fields[i])
+            {
+                case FIELD_NOT_SCANNED:
+                    objects.emplace_back("unknown", FIELD_WAYPOINTS[i][0], FIELD_WAYPOINTS[i][1]);
+                    break;
+                case 0:
+                    objects.emplace_back("blue", FIELD_WAYPOINTS[i][0], FIELD_WAYPOINTS[i][1]);
+                    break;
+                case 1:
+                    objects.emplace_back("green", FIELD_WAYPOINTS[i][0], FIELD_WAYPOINTS[i][1]);
+                    break;
+                case 2:
+                    objects.emplace_back("purple", FIELD_WAYPOINTS[i][0], FIELD_WAYPOINTS[i][1]);
+                    break;
+                case 3:
+                    objects.emplace_back("red", FIELD_WAYPOINTS[i][0], FIELD_WAYPOINTS[i][1]);
+                    break;
+            }
+        }
+        _map_uploader.upload_map(objects);
+    }
+
     bool _is_armed = false;
     bool _takeoff_completed = false;
     int _next_field_to_scan = 0;
@@ -1013,6 +1048,9 @@ private:
 
     sensor_msgs::msg::Image::ConstSharedPtr _current_image;
     image_geometry::PinholeCameraModel _cam_model;
+
+    MapUploader _map_uploader;
+    rclcpp::TimerBase::SharedPtr _map_uploader_timer;
 };
 
 int main(int argc, char *argv[])

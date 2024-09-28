@@ -102,6 +102,11 @@ static const double FIELD_WAYPOINTS[9][2] = {
 static constexpr int NUM_FIELDS = 9;
 
 /**
+ * Delay between firebase map updates.
+ */
+static constexpr int MAP_UPLOADER_DELAY_MS = 1000;
+
+/**
  * Focal length of the camera in pixels.
  * This is used to calculate the distance to the target.
  */
