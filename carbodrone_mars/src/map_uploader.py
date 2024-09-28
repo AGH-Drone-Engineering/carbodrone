@@ -28,16 +28,12 @@ def initialize_firebase():
     firebase_admin.initialize_app(cred)
     return firestore.client()
 
-# Load and parse the JSON file
-def load_json(file_path):
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-    return data
-
 # Upload points to Firestore
 def upload_points_to_firestore(data, db):
-    for color, location in data.items():
-        lat, lng = location
+    for object in data:
+        name = object["name"]
+        lat = object["lat"]
+        lng = object["lon"]
         
         # Generate random ID
         document_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
@@ -48,7 +44,7 @@ def upload_points_to_firestore(data, db):
         # Data to be inserted
         doc_data = {
             'location': firestore.GeoPoint(lat, lng),
-            'type': color,
+            'type': name,
             'alt': 4,
             'shooted': False,
             'image': ""
@@ -56,12 +52,12 @@ def upload_points_to_firestore(data, db):
         
         # Upload to Firestore
         doc_ref.set(doc_data)
-        print(f"Uploaded point for color '{color}' at {lat}, {lng} to Firestore with ID {document_id}")
+        print(f"Uploaded point for color '{name}' at {lat}, {lng} to Firestore with ID {document_id}")
 
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Upload JSON points to Firestore")
-    parser.add_argument("json_file_path", help="Path to the JSON file")
+    parser.add_argument("json_string")
     
     args = parser.parse_args()
     
@@ -72,7 +68,7 @@ if __name__ == "__main__":
     db = initialize_firebase()
     
     # Load JSON data from the provided file path
-    data = load_json(args.json_file_path)
+    data = json.loads(args.json_string)
     
     # Upload points to Firestore
     upload_points_to_firestore(data, db)
