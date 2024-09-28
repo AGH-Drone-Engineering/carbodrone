@@ -1,3 +1,7 @@
+#define USE_YOLO 1
+#define YOLO_VISUALIZE 0
+#define USE_GOTO_SETPOINT 0
+
 #include <memory>
 #include <chrono>
 
@@ -27,16 +31,18 @@
 #include "px4_msgs/msg/vehicle_global_position.hpp"
 #include "px4_msgs/msg/vehicle_local_position.hpp"
 #include "px4_msgs/msg/offboard_control_mode.hpp"
-#include "px4_msgs/msg/goto_setpoint.hpp"
 #include "px4_msgs/msg/landing_target_pose.hpp"
+
+#if USE_GOTO_SETPOINT
+#include "px4_msgs/msg/goto_setpoint.hpp"
+#else
+#include "px4_msgs/msg/trajectory_setpoint.hpp"
+#endif
 
 #include "mission_params.hpp"
 #include "map_uploader.hpp"
 
 #include "yolocpp.hpp"
-
-#define USE_YOLO 1
-#define YOLO_VISUALIZE 0
 
 using namespace std::chrono_literals;
 using px4_msgs::msg::VehicleCommand;
@@ -45,7 +51,11 @@ using px4_msgs::msg::VehicleStatus;
 using px4_msgs::msg::VehicleGlobalPosition;
 using px4_msgs::msg::VehicleLocalPosition;
 using px4_msgs::msg::OffboardControlMode;
+#if USE_GOTO_SETPOINT
 using px4_msgs::msg::GotoSetpoint;
+#else
+using px4_msgs::msg::TrajectorySetpoint;
+#endif
 using px4_msgs::msg::LandingTargetPose;
 using px4_ros_com::frame_transforms::ned_to_enu_local_frame;
 using px4_ros_com::frame_transforms::enu_to_ned_local_frame;
@@ -157,8 +167,13 @@ public:
         _offboard_control_mode_pub = create_publisher<OffboardControlMode>(
             "/fmu/in/offboard_control_mode", rclcpp::SensorDataQoS());
 
+#if USE_GOTO_SETPOINT
         _goto_setpoint_pub = create_publisher<GotoSetpoint>(
             "/fmu/in/goto_setpoint", rclcpp::SensorDataQoS());
+#else
+        _trajectory_setpoint_pub = create_publisher<TrajectorySetpoint>(
+            "/fmu/in/trajectory_setpoint", rclcpp::SensorDataQoS());
+#endif
 
         _mode_completed_sub = create_subscription<ModeCompleted>(
             "/fmu/out/mode_completed",
@@ -400,6 +415,7 @@ private:
     {
         if (_goto_enabled)
         {
+#if USE_GOTO_SETPOINT
             GotoSetpoint msg;
             msg.timestamp = get_clock()->now().nanoseconds() / 1000;
             auto v = enu_to_ned_local_frame(Vector3d(_goto_setpoint_x, _goto_setpoint_y, _goto_setpoint_z + get_ground_z()));
@@ -408,6 +424,15 @@ private:
             msg.position[2] = v.z();
             msg.flag_control_heading = true;
             _goto_setpoint_pub->publish(std::move(msg));
+#else
+            TrajectorySetpoint msg;
+            msg.timestamp = get_clock()->now().nanoseconds() / 1000;
+            auto v = enu_to_ned_local_frame(Vector3d(_goto_setpoint_x, _goto_setpoint_y, _goto_setpoint_z + get_ground_z()));
+            msg.position[0] = v.x();
+            msg.position[1] = v.y();
+            msg.position[2] = v.z();
+            _trajectory_setpoint_pub->publish(std::move(msg));
+#endif
         }
     }
 
@@ -1018,7 +1043,12 @@ private:
 
     rclcpp::Publisher<VehicleCommand>::SharedPtr _command_pub;
     rclcpp::Publisher<OffboardControlMode>::SharedPtr _offboard_control_mode_pub;
+
+#if USE_GOTO_SETPOINT
     rclcpp::Publisher<GotoSetpoint>::SharedPtr _goto_setpoint_pub;
+#else
+    rclcpp::Publisher<TrajectorySetpoint>::SharedPtr _trajectory_setpoint_pub;
+#endif
 
     rclcpp::Subscription<ModeCompleted>::SharedPtr _mode_completed_sub;
     rclcpp::Subscription<VehicleStatus>::SharedPtr _vehicle_status_sub;
