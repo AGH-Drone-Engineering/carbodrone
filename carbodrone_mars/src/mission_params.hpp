@@ -129,6 +129,12 @@ static constexpr double FIELD_REPOSITION_ALT = 4.0;
 static constexpr double FIELD_SCAN_ALT = 2.0;
 
 /**
+ * The drone will wait for this amount of time to stabilize after beginning the field descent.
+ * 1 unit is 100 ms.
+ */
+static constexpr int FIELD_DESCENT_DELAY = 100;
+
+/**
  * Time needed for the grabber to open and close.
  * 1 unit is 100 ms.
  */
