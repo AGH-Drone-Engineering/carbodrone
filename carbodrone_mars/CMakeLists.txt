@@ -29,6 +29,8 @@ find_package(std_srvs REQUIRED)
 add_compile_definitions(YOLO_BALLS_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_balls_640.onnx")
 add_compile_definitions(YOLO_BANNER_640_PATH="${CMAKE_SOURCE_DIR}/src/yolo_banner_640.onnx")
 add_compile_definitions(MAP_UPLOADER_PROGRAM_PATH="${CMAKE_SOURCE_DIR}/src/map_uploader.py")
+
+link_directories(${CMAKE_SOURCE_DIR}/lib/x86_64)
 link_libraries(yolocpp)
 
 add_executable(ball_detector src/ball_detector.cpp)
