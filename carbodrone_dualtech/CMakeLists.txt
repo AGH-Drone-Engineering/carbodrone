@@ -5,11 +5,48 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(image_geometry REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+add_executable(mission_node src/mission.cpp)
+ament_target_dependencies(mission_node
+  cv_bridge
+  geometry_msgs
+  image_geometry
+  image_transport
+  message_filters
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
+  tf2
+  tf2_ros
+  std_srvs
+)
+message(STATUS "Eigen3_LIBRARIES: ${Eigen3_LIBRARIES}")
+target_link_libraries(mission_node ${OpenCV_LIBS} Eigen3::Eigen)
+target_include_directories(mission_node PRIVATE src)
+
+install(TARGETS
+  mission_node
+  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
   worlds
