@@ -24,6 +24,8 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(mavros_msgs REQUIRED)
 
 add_executable(mission_node src/mission.cpp)
 ament_target_dependencies(mission_node
@@ -39,6 +41,8 @@ ament_target_dependencies(mission_node
   tf2
   tf2_ros
   std_srvs
+  trajectory_msgs
+  mavros_msgs
 )
 message(STATUS "Eigen3_LIBRARIES: ${Eigen3_LIBRARIES}")
 target_link_libraries(mission_node ${OpenCV_LIBS} Eigen3::Eigen)

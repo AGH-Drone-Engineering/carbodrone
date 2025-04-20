@@ -16,8 +16,14 @@
 
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
+#include "sensor_msgs/msg/nav_sat_fix.hpp"
+
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "std_srvs/srv/set_bool.hpp"
+
+#include "mavros_msgs/msg/state.hpp"
+#include "mavros_msgs/msg/altitude.hpp"
+#include "mavros_msgs/srv/command_tol.hpp"
+#include "mavros_msgs/srv/set_mode.hpp"
 
 #include "mission_params.hpp"
 
@@ -63,6 +69,33 @@ public:
         _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
         _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
         _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
+
+        _mavros_state_sub = create_subscription<mavros_msgs::msg::State>(
+            "/mavros/state",
+            10,
+            std::bind(&MissionNode::mavros_state_callback, this, std::placeholders::_1)
+        );
+
+        _mavros_global_position_global_sub = create_subscription<sensor_msgs::msg::NavSatFix>(
+            "/mavros/global_position/global",
+            rclcpp::SensorDataQoS(),
+            std::bind(&MissionNode::mavros_global_position_global_callback, this, std::placeholders::_1)
+        );
+
+        _mavros_altitude_sub = create_subscription<mavros_msgs::msg::Altitude>(
+            "/mavros/altitude",
+            rclcpp::SensorDataQoS(),
+            std::bind(&MissionNode::mavros_altitude_callback, this, std::placeholders::_1)
+        );
+
+        _mavros_command_takeoff_srv = create_client<mavros_msgs::srv::CommandTOL>(
+            "/mavros/cmd/takeoff");
+
+        _mavros_command_land_srv = create_client<mavros_msgs::srv::CommandTOL>(
+            "/mavros/cmd/land");
+
+        _mavros_set_mode_srv = create_client<mavros_msgs::srv::SetMode>(
+            "/mavros/set_mode");
     }
 
 private:
@@ -79,10 +112,14 @@ private:
         case MissionState::DO_TAKEOFF:
             do_takeoff(LANDING_PAD_HOVER_ALTITUDE);
 
-            _takeoff_completed = false;
-            change_state_after_condition(MissionState::DONE, [this](){
-                return _takeoff_completed;
+            change_state_after_condition(MissionState::DO_RTL_LAND, [this](){
+                return _altitude && _altitude->relative > 0.8 * LANDING_PAD_HOVER_ALTITUDE;
             });
+            break;
+
+        case MissionState::DO_RTL_LAND:
+            do_land();
+            change_state(MissionState::DONE);
             break;
 
         case MissionState::DONE:
@@ -100,21 +137,48 @@ private:
         }
     }
 
-    void do_arm()
-    {
-        RCLCPP_INFO(get_logger(), "[CMD] Arming vehicle");
-        // TODO: Implement
-    }
-
     void do_takeoff(float altitude)
     {
         RCLCPP_INFO(get_logger(), "[CMD] Taking off to %.2f meters", altitude);
-        // TODO: Implement
+        auto request = std::make_shared<mavros_msgs::srv::CommandTOL::Request>();
+        request->latitude = NAN;
+        request->longitude = NAN;
+        request->altitude = altitude;
+        request->yaw = NAN;
+        _mavros_command_takeoff_srv->async_send_request(request);
     }
 
-    bool landing_completed()
+    void do_land()
     {
-        return !_is_armed;
+        RCLCPP_INFO(get_logger(), "[CMD] Landing");
+        auto request = std::make_shared<mavros_msgs::srv::CommandTOL::Request>();
+        request->latitude = NAN;
+        request->longitude = NAN;
+        request->yaw = NAN;
+        _mavros_command_land_srv->async_send_request(request);
+    }
+
+    void mavros_state_callback(const mavros_msgs::msg::State::ConstSharedPtr &state_in)
+    {
+        if (!_is_armed && state_in->armed)
+        {
+            RCLCPP_INFO(get_logger(), "[MAV] Vehicle armed");
+        }
+        else if (_is_armed && !state_in->armed)
+        {
+            RCLCPP_INFO(get_logger(), "[MAV] Vehicle disarmed");
+        }
+        _is_armed = state_in->armed;
+    }
+
+    void mavros_global_position_global_callback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr &global_position_global_in)
+    {
+        _global_position_global = global_position_global_in;
+    }
+
+    void mavros_altitude_callback(const mavros_msgs::msg::Altitude::ConstSharedPtr &altitude_in)
+    {
+        _altitude = altitude_in;
     }
 
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
@@ -189,19 +253,28 @@ private:
         return cam_model;
     }
 
-    bool _is_armed = false;
-    bool _takeoff_completed = false;
-
-    std::unique_ptr<tf2_ros::Buffer> _tf_buf;
-    std::unique_ptr<tf2_ros::TransformListener> _tf_listener;
+    std::unique_ptr<tf2_ros::Buffer>               _tf_buf;
+    std::unique_ptr<tf2_ros::TransformListener>    _tf_listener;
     std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
 
     rclcpp::Node::SharedPtr _nh;
 
     image_transport::ImageTransport _it;
     image_transport::Subscriber _image_sub;
-
     sensor_msgs::msg::Image::ConstSharedPtr _current_image;
+
+    rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr _mavros_state_sub;
+    bool _is_armed = false;
+
+    rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
+    sensor_msgs::msg::NavSatFix::ConstSharedPtr _global_position_global;
+
+    rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
+    mavros_msgs::msg::Altitude::ConstSharedPtr _altitude;
+
+    rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_takeoff_srv;
+    rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_land_srv;
+    rclcpp::Client<mavros_msgs::srv::SetMode>::SharedPtr         _mavros_set_mode_srv;
 };
 
 int main(int argc, char *argv[])
