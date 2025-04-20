@@ -27,6 +27,11 @@ find_package(Eigen3 REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(mavros_msgs REQUIRED)
 
+# Append to CMAKE_MODULE_PATH since debian/ubuntu installs
+# FindGeographicLib.cmake in a nonstand location
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+find_package(GeographicLib REQUIRED)
+
 add_executable(mission_node src/mission.cpp)
 ament_target_dependencies(mission_node
   cv_bridge
@@ -45,7 +50,7 @@ ament_target_dependencies(mission_node
   mavros_msgs
 )
 message(STATUS "Eigen3_LIBRARIES: ${Eigen3_LIBRARIES}")
-target_link_libraries(mission_node ${OpenCV_LIBS} Eigen3::Eigen)
+target_link_libraries(mission_node ${OpenCV_LIBS} Eigen3::Eigen ${GeographicLib_LIBRARIES})
 target_include_directories(mission_node PRIVATE src)
 
 install(TARGETS

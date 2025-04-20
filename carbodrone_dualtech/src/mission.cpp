@@ -22,9 +22,14 @@
 
 #include "mavros_msgs/msg/state.hpp"
 #include "mavros_msgs/msg/altitude.hpp"
+#include "mavros_msgs/msg/waypoint.hpp"
+#include "mavros_msgs/msg/command_code.hpp"
 #include "mavros_msgs/srv/command_tol.hpp"
 #include "mavros_msgs/srv/set_mode.hpp"
+#include "mavros_msgs/srv/waypoint_push.hpp"
+#include "mavros_msgs/srv/command_long.hpp"
 
+#include "geo.hpp"
 #include "mission_params.hpp"
 
 using namespace std::chrono_literals;
@@ -33,11 +38,9 @@ using Eigen::Vector3d;
 #define MISSION_STATE_LIST \
     X(INIT)                \
     \
-    X(DO_TAKEOFF)          \
-    \
-    X(DO_RTL_REPOSITION)       \
-    X(DO_RTL_REPOSITION_DELAY) \
-    X(DO_RTL_LAND)             \
+    X(DO_SEND_MISSION)       \
+    X(DO_SEND_MISSION_DELAY) \
+    X(DO_EXECUTE_MISSION)    \
     \
     X(DONE) \
     X(NOOP)
@@ -96,6 +99,12 @@ public:
 
         _mavros_set_mode_srv = create_client<mavros_msgs::srv::SetMode>(
             "/mavros/set_mode");
+
+        _mavros_mission_push_srv = create_client<mavros_msgs::srv::WaypointPush>(
+            "/mavros/mission/push");
+
+        _mavros_command_srv = create_client<mavros_msgs::srv::CommandLong>(
+            "/mavros/cmd/command");
     }
 
 private:
@@ -104,23 +113,38 @@ private:
         switch (state)
         {
         case MissionState::INIT:
-            change_state_after_condition(MissionState::DO_TAKEOFF, [this](){
+            change_state_after_condition(MissionState::DO_SEND_MISSION, [this](){
                 return _is_armed;
             });
             break;
 
-        case MissionState::DO_TAKEOFF:
-            do_takeoff(LANDING_PAD_HOVER_ALTITUDE);
-
-            change_state_after_condition(MissionState::DO_RTL_LAND, [this](){
-                return _altitude && _altitude->relative > 0.8 * LANDING_PAD_HOVER_ALTITUDE;
+        case MissionState::DO_SEND_MISSION:
+            do_send_mission();
+            change_state_after_condition(MissionState::DO_SEND_MISSION_DELAY, [this](){
+                return _mavros_mission_push_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
             });
             break;
 
-        case MissionState::DO_RTL_LAND:
-            do_land();
-            change_state(MissionState::DONE);
+        case MissionState::DO_SEND_MISSION_DELAY:
+            change_state_after(MissionState::DO_EXECUTE_MISSION, 10);
             break;
+
+        case MissionState::DO_EXECUTE_MISSION:
+        {
+            auto result = _mavros_mission_push_future.get();
+            if (!result->success)
+            {
+                RCLCPP_ERROR(get_logger(), "Failed to send mission");
+                change_state(MissionState::DONE);
+                break;
+            }
+            RCLCPP_INFO(get_logger(), "Mission sent");
+            do_execute_mission();
+            change_state_after_condition(MissionState::DONE, [this](){
+                return _mavros_command_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            });
+            break;
+        }
 
         case MissionState::DONE:
             RCLCPP_INFO(get_logger(), "Mission completed");
@@ -135,6 +159,115 @@ private:
             rclcpp::shutdown();
             break;
         }
+    }
+
+    void do_send_mission()
+    {
+        if (!_global_position_global)
+        {
+            RCLCPP_ERROR(get_logger(), "Send mission failed: No global position");
+            return;
+        }
+
+        RCLCPP_INFO(get_logger(), "[CMD] Sending mission");
+        auto request = std::make_shared<mavros_msgs::srv::WaypointPush::Request>();
+
+        const double lat0 = _global_position_global->latitude;
+        const double lon0 = _global_position_global->longitude;
+        double lat, lon;
+
+        auto waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_TAKEOFF;
+        waypoint.is_current = true;
+        waypoint.autocontinue = true;
+        waypoint.x_lat = lat0;
+        waypoint.y_long = lon0;
+        waypoint.z_alt = LANDING_PAD_HOVER_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        geo_solve_direct(lat0, lon0, -5.0, 0.0, &lat, &lon);
+        waypoint.x_lat = lat;
+        waypoint.y_long = lon;
+        waypoint.z_alt = SCAN_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        geo_solve_direct(lat0, lon0, -10.0, 0.0, &lat, &lon);
+        waypoint.x_lat = lat;
+        waypoint.y_long = lon;
+        waypoint.z_alt = SCAN_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        geo_solve_direct(lat0, lon0, -10.0, 5.0, &lat, &lon);
+        waypoint.x_lat = lat;
+        waypoint.y_long = lon;
+        waypoint.z_alt = SCAN_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        geo_solve_direct(lat0, lon0, -5.0, 5.0, &lat, &lon);
+        waypoint.x_lat = lat;
+        waypoint.y_long = lon;
+        waypoint.z_alt = SCAN_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        geo_solve_direct(lat0, lon0, -5.0, 0.0, &lat, &lon);
+        waypoint.x_lat = lat;
+        waypoint.y_long = lon;
+        waypoint.z_alt = SCAN_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+        waypoint.autocontinue = true;
+        waypoint.x_lat = lat0;
+        waypoint.y_long = lon0;
+        waypoint.z_alt = LANDING_PAD_HOVER_ALTITUDE;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_LAND;
+        waypoint.autocontinue = true;
+        waypoint.x_lat = lat0;
+        waypoint.y_long = lon0;
+        request->waypoints.push_back(std::move(waypoint));
+
+        auto result = _mavros_mission_push_srv->async_send_request(request);
+        _mavros_mission_push_future = result.share();
+    }
+
+    void do_execute_mission()
+    {
+        RCLCPP_INFO(get_logger(), "[CMD] Executing mission");
+        auto request = std::make_shared<mavros_msgs::srv::CommandLong::Request>();
+        request->command = mavros_msgs::msg::CommandCode::MISSION_START;
+        auto result = _mavros_command_srv->async_send_request(request);
+        _mavros_command_future = result.share();
     }
 
     void do_takeoff(float altitude)
@@ -275,6 +408,11 @@ private:
     rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_takeoff_srv;
     rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_land_srv;
     rclcpp::Client<mavros_msgs::srv::SetMode>::SharedPtr         _mavros_set_mode_srv;
+    rclcpp::Client<mavros_msgs::srv::WaypointPush>::SharedPtr    _mavros_mission_push_srv;
+    rclcpp::Client<mavros_msgs::srv::CommandLong>::SharedPtr     _mavros_command_srv;
+
+    std::shared_future<mavros_msgs::srv::WaypointPush::Response::SharedPtr> _mavros_mission_push_future;
+    std::shared_future<mavros_msgs::srv::CommandLong::Response::SharedPtr> _mavros_command_future;
 };
 
 int main(int argc, char *argv[])
