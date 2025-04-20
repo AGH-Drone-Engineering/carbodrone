@@ -14,9 +14,7 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
 
-    rviz = os.path.join(
-        get_package_share_directory('carbodrone_common'),
-        'rviz/main.rviz')
+    rviz = PathJoinSubstitution([get_package_share_directory('carbodrone_mavlink'), 'rviz', 'main.rviz'])
 
     urdf_path = PathJoinSubstitution([FindPackageShare('carbodrone_common'), 'models', 'x500', 'model.urdf'])
     robot_description_content = ParameterValue(Command(['xacro ', urdf_path]), value_type=str)
@@ -105,3 +103,4 @@ def generate_launch_description():
             cmd=['/bin/bash', '-c', 'QT_QPA_PLATFORM=xcb QGroundControl'],
             name='QGroundControl',
         ),
+    ])
