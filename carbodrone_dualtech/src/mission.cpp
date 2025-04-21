@@ -31,6 +31,7 @@
 
 #include "geo.hpp"
 #include "mission_params.hpp"
+#include "mission_planner.hpp"
 
 using namespace std::chrono_literals;
 using Eigen::Vector3d;
@@ -172,80 +173,44 @@ private:
         RCLCPP_INFO(get_logger(), "[CMD] Sending mission");
         auto request = std::make_shared<mavros_msgs::srv::WaypointPush::Request>();
 
-        const double lat0 = _global_position_global->latitude;
-        const double lon0 = _global_position_global->longitude;
-        double lat, lon;
+        const geo::Point home(_global_position_global->latitude, _global_position_global->longitude);
+        MissionPlanner planner(home);
+
+        const auto p1 = home + geo::Offset(3, 3);
+        const auto p2 = p1 + geo::Offset(6, 0);
+        const auto p3 = p1 + geo::Offset(6, 6.1);
+        const auto p4 = p1 + geo::Offset(0, 6.1);
+
+        planner.plan(p1, p2, p3, p4, 3.1);
 
         auto waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
         waypoint.command = mavros_msgs::msg::CommandCode::NAV_TAKEOFF;
         waypoint.is_current = true;
         waypoint.autocontinue = true;
-        waypoint.x_lat = lat0;
-        waypoint.y_long = lon0;
+        waypoint.x_lat = home.lat();
+        waypoint.y_long = home.lon();
         waypoint.z_alt = LANDING_PAD_HOVER_ALTITUDE;
         request->waypoints.push_back(std::move(waypoint));
 
-
-
-        waypoint = mavros_msgs::msg::Waypoint();
-        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
-        waypoint.autocontinue = true;
-        geo_solve_direct(lat0, lon0, -5.0, 0.0, &lat, &lon);
-        waypoint.x_lat = lat;
-        waypoint.y_long = lon;
-        waypoint.z_alt = SCAN_ALTITUDE;
-        request->waypoints.push_back(std::move(waypoint));
-
-        waypoint = mavros_msgs::msg::Waypoint();
-        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
-        waypoint.autocontinue = true;
-        geo_solve_direct(lat0, lon0, -10.0, 0.0, &lat, &lon);
-        waypoint.x_lat = lat;
-        waypoint.y_long = lon;
-        waypoint.z_alt = SCAN_ALTITUDE;
-        request->waypoints.push_back(std::move(waypoint));
+        for (const auto &point : planner.path())
+        {
+            waypoint = mavros_msgs::msg::Waypoint();
+            waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+            waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
+            waypoint.autocontinue = true;
+            waypoint.x_lat = point.lat();
+            waypoint.y_long = point.lon();
+            waypoint.z_alt = SCAN_ALTITUDE;
+            request->waypoints.push_back(std::move(waypoint));
+        }
 
         waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
         waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
         waypoint.autocontinue = true;
-        geo_solve_direct(lat0, lon0, -10.0, 5.0, &lat, &lon);
-        waypoint.x_lat = lat;
-        waypoint.y_long = lon;
-        waypoint.z_alt = SCAN_ALTITUDE;
-        request->waypoints.push_back(std::move(waypoint));
-
-        waypoint = mavros_msgs::msg::Waypoint();
-        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
-        waypoint.autocontinue = true;
-        geo_solve_direct(lat0, lon0, -5.0, 5.0, &lat, &lon);
-        waypoint.x_lat = lat;
-        waypoint.y_long = lon;
-        waypoint.z_alt = SCAN_ALTITUDE;
-        request->waypoints.push_back(std::move(waypoint));
-
-        waypoint = mavros_msgs::msg::Waypoint();
-        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
-        waypoint.autocontinue = true;
-        geo_solve_direct(lat0, lon0, -5.0, 0.0, &lat, &lon);
-        waypoint.x_lat = lat;
-        waypoint.y_long = lon;
-        waypoint.z_alt = SCAN_ALTITUDE;
-        request->waypoints.push_back(std::move(waypoint));
-
-
-
-        waypoint = mavros_msgs::msg::Waypoint();
-        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
-        waypoint.autocontinue = true;
-        waypoint.x_lat = lat0;
-        waypoint.y_long = lon0;
+        waypoint.x_lat = home.lat();
+        waypoint.y_long = home.lon();
         waypoint.z_alt = LANDING_PAD_HOVER_ALTITUDE;
         request->waypoints.push_back(std::move(waypoint));
 
@@ -253,8 +218,8 @@ private:
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
         waypoint.command = mavros_msgs::msg::CommandCode::NAV_LAND;
         waypoint.autocontinue = true;
-        waypoint.x_lat = lat0;
-        waypoint.y_long = lon0;
+        waypoint.x_lat = home.lat();
+        waypoint.y_long = home.lon();
         request->waypoints.push_back(std::move(waypoint));
 
         auto result = _mavros_mission_push_srv->async_send_request(request);
