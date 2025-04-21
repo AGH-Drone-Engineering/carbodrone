@@ -49,12 +49,32 @@ ament_target_dependencies(mission_node
   trajectory_msgs
   mavros_msgs
 )
-message(STATUS "Eigen3_LIBRARIES: ${Eigen3_LIBRARIES}")
 target_link_libraries(mission_node ${OpenCV_LIBS} Eigen3::Eigen ${GeographicLib_LIBRARIES})
 target_include_directories(mission_node PRIVATE src)
 
+add_executable(recording_node src/recording_node.cpp)
+ament_target_dependencies(recording_node
+  cv_bridge
+  geometry_msgs
+  image_geometry
+  image_transport
+  message_filters
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
+  tf2
+  tf2_ros
+  std_srvs
+  trajectory_msgs
+  mavros_msgs
+)
+target_link_libraries(recording_node ${OpenCV_LIBS} Eigen3::Eigen ${GeographicLib_LIBRARIES})
+target_include_directories(recording_node PRIVATE src)
+
 install(TARGETS
   mission_node
+  recording_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
