@@ -33,6 +33,13 @@ static double abs_time_diff(const time_point_t &t1, const time_point_t &t2)
     return std::abs(std::chrono::duration<double>(t1 - t2).count());
 }
 
+static std::string make_log_writer_dir_path()
+{
+    auto now = std::chrono::system_clock::now();
+    auto nsecs = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+    return std::string("carbodrone_dualtech_logs_") + std::to_string(nsecs);
+}
+
 class RecordingNode : public rclcpp::Node
 {
 public:
@@ -42,7 +49,7 @@ public:
         , _it(_nh)
         , _image_sub(
               _it.subscribe("/camera/image", 1, std::bind(&RecordingNode::image_callback, this, std::placeholders::_1)))
-        , _log_writer("carbodrone_dualtech_logs")
+        , _log_writer(make_log_writer_dir_path())
     {
         _mavros_global_position_global_sub = create_subscription<sensor_msgs::msg::NavSatFix>(
             "/mavros/global_position/global", rclcpp::SensorDataQoS(),
