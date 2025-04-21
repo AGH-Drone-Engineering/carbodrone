@@ -12,8 +12,11 @@
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 #include "mavros_msgs/msg/altitude.hpp"
+
+#include "log_writer.hpp"
 
 using time_point_t = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
 
@@ -47,22 +50,39 @@ public:
         _mavros_altitude_sub = create_subscription<mavros_msgs::msg::Altitude>(
             "/mavros/altitude", rclcpp::SensorDataQoS(),
             std::bind(&RecordingNode::mavros_altitude_callback, this, std::placeholders::_1));
+
+        _mavros_local_position_pose_sub = create_subscription<geometry_msgs::msg::PoseStamped>(
+            "/mavros/local_position/pose", rclcpp::SensorDataQoS(),
+            std::bind(&RecordingNode::mavros_local_position_pose_callback, this, std::placeholders::_1));
     }
 
 private:
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
     {
-        if (_current_image && _current_global_position_global && _current_altitude)
+        if (_current_image && _current_global_position_global && _current_altitude && _current_local_position_pose)
         {
             auto time_img = ros2_timestamp_to_chrono(_current_image->header.stamp);
             auto time_gps = ros2_timestamp_to_chrono(_current_global_position_global->header.stamp);
             auto time_alt = ros2_timestamp_to_chrono(_current_altitude->header.stamp);
-            auto time_diff = std::max(abs_time_diff(time_img, time_gps), abs_time_diff(time_img, time_alt));
+            auto time_pose = ros2_timestamp_to_chrono(_current_local_position_pose->header.stamp);
+            auto time_diff = std::max({
+                abs_time_diff(time_img, time_gps),
+                abs_time_diff(time_img, time_alt),
+                abs_time_diff(time_img, time_pose),
+            });
             if (time_diff > 0.5)
             {
                 RCLCPP_WARN(get_logger(), "Image metadata is too old: %f s", time_diff);
                 return;
             }
+
+            LogWriter::Metadata metadata(
+                _current_image,
+                _current_global_position_global,
+                _current_altitude,
+                _current_local_position_pose
+            );
+            _log_writer.write(_current_image, metadata);
         }
         _current_image = img_in;
     }
@@ -104,6 +124,24 @@ private:
         }
     }
 
+    void mavros_local_position_pose_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &local_position_pose_in)
+    {
+        if (!_current_image || !_current_local_position_pose)
+        {
+            _current_local_position_pose = local_position_pose_in;
+            return;
+        }
+
+        auto new_pose_t = ros2_timestamp_to_chrono(local_position_pose_in->header.stamp);
+        auto current_pose_t = ros2_timestamp_to_chrono(_current_local_position_pose->header.stamp);
+        auto current_img_t = ros2_timestamp_to_chrono(_current_image->header.stamp);
+
+        if (abs_time_diff(new_pose_t, current_img_t) < abs_time_diff(current_pose_t, current_img_t))
+        {
+            _current_local_position_pose = local_position_pose_in;
+        }
+    }
+
     rclcpp::Node::SharedPtr _nh;
 
     image_transport::ImageTransport _it;
@@ -112,9 +150,13 @@ private:
     sensor_msgs::msg::Image::ConstSharedPtr _current_image;
     sensor_msgs::msg::NavSatFix::ConstSharedPtr _current_global_position_global;
     mavros_msgs::msg::Altitude::ConstSharedPtr _current_altitude;
+    geometry_msgs::msg::PoseStamped::ConstSharedPtr _current_local_position_pose;
 
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
     rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _mavros_local_position_pose_sub;
+
+    LogWriter _log_writer;
 };
 
 int main(int argc, char *argv[])
