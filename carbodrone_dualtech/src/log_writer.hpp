@@ -1,6 +1,10 @@
 #pragma once
 
+#include <filesystem>
+#include <fstream>
+
 #include "Eigen/Geometry"
+#include "nlohmann/json.hpp"
 #include "opencv2/opencv.hpp"
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -38,7 +42,90 @@ public:
         double qw, qx, qy, qz;
     };
 
-    void write(const sensor_msgs::msg::Image::ConstSharedPtr &image, const Metadata &metadata) {}
+    LogWriter(const std::string &directory_path)
+        : frame_count_(0)
+    {
+        std::filesystem::path dir_path(directory_path);
+        if (!std::filesystem::exists(dir_path))
+        {
+            std::filesystem::create_directories(dir_path);
+        }
+        dir_path_ = directory_path;
+        is_initialized_ = false;
+    }
+
+    void write(const sensor_msgs::msg::Image::ConstSharedPtr &image, const Metadata &metadata)
+    {
+        cv::Mat cv_image;
+        try
+        {
+            if (image->encoding == "bgr8")
+            {
+                cv_image = cv::Mat(image->height, image->width, CV_8UC3,
+                                   const_cast<unsigned char *>(image->data.data()), image->step);
+            }
+            else if (image->encoding == "rgb8")
+            {
+                cv_image = cv::Mat(image->height, image->width, CV_8UC3,
+                                   const_cast<unsigned char *>(image->data.data()), image->step);
+                cv::cvtColor(cv_image, cv_image, cv::COLOR_RGB2BGR);
+            }
+            else if (image->encoding == "mono8")
+            {
+                cv_image = cv::Mat(image->height, image->width, CV_8UC1,
+                                   const_cast<unsigned char *>(image->data.data()), image->step);
+                cv::cvtColor(cv_image, cv_image, cv::COLOR_GRAY2BGR);
+            }
+            else
+            {
+                throw std::runtime_error("Unsupported image encoding: " + image->encoding);
+            }
+
+            if (!is_initialized_)
+            {
+                int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G'); // MJPG codec
+                double fps = 30.0;
+                video_writer_.open((dir_path_ / "video.avi").string(), fourcc, fps, cv_image.size(), true);
+                if (!video_writer_.isOpened())
+                {
+                    throw std::runtime_error("Could not open video file for writing");
+                }
+                is_initialized_ = true;
+            }
+
+            video_writer_.write(cv_image);
+
+            nlohmann::json json_data;
+            json_data["epoch_nanos"] = metadata.epoch_nanos;
+            json_data["latitude"] = metadata.latitude;
+            json_data["longitude"] = metadata.longitude;
+            json_data["altitude"] = metadata.altitude;
+            json_data["orientation"] = {
+                {"qw", metadata.qw}, {"qx", metadata.qx}, {"qy", metadata.qy}, {"qz", metadata.qz}};
+
+            std::string json_filename = (dir_path_ / (std::to_string(frame_count_) + ".json")).string();
+            std::ofstream json_file(json_filename);
+            json_file << json_data.dump(2);
+
+            frame_count_++;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error in LogWriter::write: " << e.what() << std::endl;
+        }
+    }
+
+    ~LogWriter()
+    {
+        if (video_writer_.isOpened())
+        {
+            video_writer_.release();
+        }
+    }
 
 private:
+    std::filesystem::path dir_path_;
+    cv::VideoWriter video_writer_;
+    int frame_count_;
+    bool is_initialized_;
 };

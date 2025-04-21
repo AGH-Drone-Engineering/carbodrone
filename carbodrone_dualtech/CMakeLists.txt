@@ -26,6 +26,7 @@ find_package(std_srvs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(mavros_msgs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 # Append to CMAKE_MODULE_PATH since debian/ubuntu installs
 # FindGeographicLib.cmake in a nonstand location
@@ -69,7 +70,7 @@ ament_target_dependencies(recording_node
   trajectory_msgs
   mavros_msgs
 )
-target_link_libraries(recording_node ${OpenCV_LIBS} Eigen3::Eigen ${GeographicLib_LIBRARIES})
+target_link_libraries(recording_node ${OpenCV_LIBS} Eigen3::Eigen ${GeographicLib_LIBRARIES} nlohmann_json::nlohmann_json)
 target_include_directories(recording_node PRIVATE src)
 
 install(TARGETS

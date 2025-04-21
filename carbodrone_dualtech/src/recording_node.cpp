@@ -42,6 +42,7 @@ public:
         , _it(_nh)
         , _image_sub(
               _it.subscribe("/camera/image", 1, std::bind(&RecordingNode::image_callback, this, std::placeholders::_1)))
+        , _log_writer("carbodrone_dualtech_logs")
     {
         _mavros_global_position_global_sub = create_subscription<sensor_msgs::msg::NavSatFix>(
             "/mavros/global_position/global", rclcpp::SensorDataQoS(),
