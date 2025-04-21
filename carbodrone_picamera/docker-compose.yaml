@@ -1,0 +1,9 @@
+services:
+  camera:
+    image: carbodrone/carbodrone_picamera:latest
+    build: .
+    network_mode: host
+    volumes:
+      - /run/udev:/run/udev:ro
+    privileged: true
+    restart: on-failure
