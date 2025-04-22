@@ -98,8 +98,5 @@ RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
 
-RUN useradd -m -d /home/user user
-USER user
-
-# run launch file
+USER root
 CMD ["ros2", "run", "carbodrone_picamera", "camera_node.py"]

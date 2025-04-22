@@ -9,7 +9,7 @@ from picamera2 import Picamera2
 import threading
 
 
-CAMERA_FOCAL_LENGTH_PX = 1260
+CAMERA_FOCAL_LENGTH_PX = 1260.0
 
 
 class CameraNode(Node):
@@ -21,12 +21,11 @@ class CameraNode(Node):
 
         self.picam2 = Picamera2()
         video_config = self.picam2.create_video_configuration(
-            main={"size": (1920, 1080), "format": "YUV420"},
+            main={"size": (1920, 1080), "format": "BGR888"},
         )
         self.picam2.configure(video_config)
         self.picam2.start()
 
-        # Initialize camera_info after picam2 is configured
         self.camera_info = self.create_camera_info()
 
         self.is_running = True
@@ -89,18 +88,13 @@ class CameraNode(Node):
             frame = self.picam2.capture_array('main')
             stamp = self.get_clock().now().to_msg()
 
-            msg = self.cv_bridge.cv2_to_imgmsg(frame, "yuv420")
+            msg = self.cv_bridge.cv2_to_imgmsg(frame, "bgr8")
             msg.header.stamp = stamp
             msg.header.frame_id = self.camera_info.header.frame_id
             self.publisher.publish(msg)
 
             self.camera_info.header.stamp = stamp
             self.camera_info_publisher.publish(self.camera_info)
-
-    def stop(self):
-        self.is_running = False
-        self.thread.join()
-        self.picam2.stop()
 
 
 def main(args=None):
@@ -109,8 +103,8 @@ def main(args=None):
     try:
         rclpy.spin(camera_node)
     except KeyboardInterrupt:
-        camera_node.stop()
-        camera_node.destroy_node()
+        pass
+    finally:
         rclpy.shutdown()
 
 
