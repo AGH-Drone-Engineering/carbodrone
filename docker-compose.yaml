@@ -34,7 +34,7 @@ services:
     ipc: host
     pid: host
     volumes:
-      - /dev/shm:/dev/shm
+      - /dev:/dev
       - /run/udev:/run/udev:ro
     privileged: true
     restart: on-failure
