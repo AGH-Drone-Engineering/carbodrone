@@ -20,10 +20,13 @@
 
 #include "geometry_msgs/msg/transform_stamped.hpp"
 
+#include "std_msgs/msg/bool.hpp"
+
 #include "mavros_msgs/msg/state.hpp"
 #include "mavros_msgs/msg/altitude.hpp"
 #include "mavros_msgs/msg/waypoint.hpp"
 #include "mavros_msgs/msg/command_code.hpp"
+#include "mavros_msgs/msg/waypoint_list.hpp"
 #include "mavros_msgs/srv/command_tol.hpp"
 #include "mavros_msgs/srv/set_mode.hpp"
 #include "mavros_msgs/srv/waypoint_push.hpp"
@@ -39,9 +42,11 @@ using Eigen::Vector3d;
 #define MISSION_STATE_LIST \
     X(INIT)                \
     \
-    X(DO_SEND_MISSION)       \
-    X(DO_SEND_MISSION_DELAY) \
-    X(DO_EXECUTE_MISSION)    \
+    X(DO_SEND_MISSION)        \
+    X(DO_SEND_MISSION_DELAY)  \
+    X(DO_EXECUTE_MISSION)     \
+    X(DO_EXECUTE_MISSION_FUT) \
+    X(DO_MONITOR_MISSION)     \
     \
     X(DONE) \
     X(NOOP)
@@ -92,6 +97,14 @@ public:
             std::bind(&MissionNode::mavros_altitude_callback, this, std::placeholders::_1)
         );
 
+        _mavros_mission_waypoints_sub = create_subscription<mavros_msgs::msg::WaypointList>(
+            "/mavros/mission/waypoints",
+            10,
+            std::bind(&MissionNode::mavros_mission_waypoints_callback, this, std::placeholders::_1)
+        );
+
+        _enable_recording_pub = create_publisher<std_msgs::msg::Bool>("enable_recording", 10);
+
         _mavros_command_takeoff_srv = create_client<mavros_msgs::srv::CommandTOL>(
             "/mavros/cmd/takeoff");
 
@@ -141,9 +154,34 @@ private:
             }
             RCLCPP_INFO(get_logger(), "Mission sent");
             do_execute_mission();
-            change_state_after_condition(MissionState::DONE, [this](){
+            change_state_after_condition(MissionState::DO_EXECUTE_MISSION_FUT, [this](){
                 return _mavros_command_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
             });
+            break;
+        }
+
+        case MissionState::DO_EXECUTE_MISSION_FUT:
+        {
+            auto result = _mavros_command_future.get();
+            if (!result->success)
+            {
+                RCLCPP_ERROR(get_logger(), "Failed to execute mission");
+                change_state(MissionState::DONE);
+                break;
+            }
+            RCLCPP_INFO(get_logger(), "Mission executed");
+            change_state(MissionState::DO_MONITOR_MISSION);
+            break;
+        }
+
+        case MissionState::DO_MONITOR_MISSION:
+        {
+            if (!_is_armed)
+            {
+                RCLCPP_INFO(get_logger(), "Vehicle disarmed");
+                do_disable_recording();
+                change_state(MissionState::DONE);
+            }
             break;
         }
 
@@ -256,6 +294,22 @@ private:
         _mavros_command_land_srv->async_send_request(request);
     }
 
+    void do_enable_recording()
+    {
+        RCLCPP_INFO(get_logger(), "[CMD] Enabling recording");
+        std_msgs::msg::Bool msg;
+        msg.data = true;
+        _enable_recording_pub->publish(msg);
+    }
+
+    void do_disable_recording()
+    {
+        RCLCPP_INFO(get_logger(), "[CMD] Disabling recording");
+        std_msgs::msg::Bool msg;
+        msg.data = false;
+        _enable_recording_pub->publish(msg);
+    }
+
     void mavros_state_callback(const mavros_msgs::msg::State::ConstSharedPtr &state_in)
     {
         if (!_is_armed && state_in->armed)
@@ -277,6 +331,36 @@ private:
     void mavros_altitude_callback(const mavros_msgs::msg::Altitude::ConstSharedPtr &altitude_in)
     {
         _altitude = altitude_in;
+    }
+
+    void mavros_mission_waypoints_callback(const mavros_msgs::msg::WaypointList::ConstSharedPtr &waypoints_in)
+    {
+        if (!_is_armed)
+        {
+            return;
+        }
+
+        int num_waypoints = waypoints_in->waypoints.size();
+        if (num_waypoints < 5)
+        {
+            // Minimum waypoints: takeoff, first goto, second goto, return, land
+            return;
+        }
+
+        int second_goto_idx = 2;
+        int return_idx = num_waypoints - 2;
+
+        auto second_goto = waypoints_in->waypoints[second_goto_idx];
+        auto return_wp = waypoints_in->waypoints[return_idx];
+
+        if (second_goto.is_current)
+        {
+            do_enable_recording();
+        }
+        else if (return_wp.is_current)
+        {
+            do_disable_recording();
+        }
     }
 
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
@@ -369,6 +453,10 @@ private:
 
     rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
     mavros_msgs::msg::Altitude::ConstSharedPtr _altitude;
+
+    rclcpp::Subscription<mavros_msgs::msg::WaypointList>::SharedPtr _mavros_mission_waypoints_sub;
+
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _enable_recording_pub;
 
     rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_takeoff_srv;
     rclcpp::Client<mavros_msgs::srv::CommandTOL>::SharedPtr      _mavros_command_land_srv;
