@@ -9,12 +9,6 @@ ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS/src
 RUN echo "\
 repositories: \n\
-  px4_msgs: \n\
-    type: git \n\
-    url: https://github.com/PX4/px4_msgs.git \n\
-  px4_ros_com: \n\
-    type: git \n\
-    url: https://github.com/PX4/px4_ros_com.git \n\
 " > ../overlay.repos
 RUN vcs import ./ < ../overlay.repos
 
@@ -42,8 +36,6 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
       --from-paths \
         src/carbodrone/carbodrone_common \
         src/carbodrone/carbodrone_mavlink \
-        src/px4_msgs \
-        src/px4_ros_com \
       --ignore-src \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,12 +44,6 @@ RUN /opt/ros/$ROS_DISTRO/lib/mavros/install_geographiclib_datasets.sh
 # build overlay source
 COPY --from=cacher $OVERLAY_WS/src ./src
 ARG OVERLAY_MIXINS="release"
-RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-    colcon build \
-      --packages-select \
-        px4_msgs \
-        px4_ros_com \
-      --mixin $OVERLAY_MIXINS
 
 COPY carbodrone_common ./src/carbodrone/carbodrone_common
 COPY carbodrone_mavlink ./src/carbodrone/carbodrone_mavlink
