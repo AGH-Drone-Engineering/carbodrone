@@ -13,6 +13,7 @@
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "mavros_msgs/msg/altitude.hpp"
 
@@ -49,7 +50,6 @@ public:
         , _it(_nh)
         , _image_sub(
               _it.subscribe("/camera/image", 1, std::bind(&RecordingNode::image_callback, this, std::placeholders::_1)))
-        , _log_writer(make_log_writer_dir_path())
     {
         _mavros_global_position_global_sub = create_subscription<sensor_msgs::msg::NavSatFix>(
             "/mavros/global_position/global", rclcpp::SensorDataQoS(),
@@ -62,12 +62,16 @@ public:
         _mavros_local_position_pose_sub = create_subscription<geometry_msgs::msg::PoseStamped>(
             "/mavros/local_position/pose", rclcpp::SensorDataQoS(),
             std::bind(&RecordingNode::mavros_local_position_pose_callback, this, std::placeholders::_1));
+
+        _enable_recording_sub = create_subscription<std_msgs::msg::Bool>(
+            "enable_recording", 10,
+            std::bind(&RecordingNode::enable_recording_callback, this, std::placeholders::_1));
     }
 
 private:
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
     {
-        if (_current_image && _current_global_position_global && _current_altitude && _current_local_position_pose)
+        if (_log_writer && _current_image && _current_global_position_global && _current_altitude && _current_local_position_pose)
         {
             auto time_img = ros2_timestamp_to_chrono(_current_image->header.stamp);
             auto time_gps = ros2_timestamp_to_chrono(_current_global_position_global->header.stamp);
@@ -90,7 +94,7 @@ private:
                 _current_altitude,
                 _current_local_position_pose
             );
-            _log_writer.write(_current_image, metadata);
+            _log_writer->write(_current_image, metadata);
         }
         _current_image = img_in;
     }
@@ -150,6 +154,20 @@ private:
         }
     }
 
+    void enable_recording_callback(const std_msgs::msg::Bool::ConstSharedPtr &enable_recording_in)
+    {
+        if (!_log_writer && enable_recording_in->data)
+        {
+            RCLCPP_INFO(get_logger(), "Recording enabled");
+            _log_writer = std::make_unique<LogWriter>(make_log_writer_dir_path());
+        }
+        else if (_log_writer && !enable_recording_in->data)
+        {
+            RCLCPP_INFO(get_logger(), "Recording disabled");
+            _log_writer = nullptr;
+        }
+    }
+
     rclcpp::Node::SharedPtr _nh;
 
     image_transport::ImageTransport _it;
@@ -164,7 +182,9 @@ private:
     rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _mavros_local_position_pose_sub;
 
-    LogWriter _log_writer;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _enable_recording_sub;
+
+    std::unique_ptr<LogWriter> _log_writer;
 };
 
 int main(int argc, char *argv[])
