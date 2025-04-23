@@ -214,12 +214,12 @@ private:
         const geo::Point home(_global_position_global->latitude, _global_position_global->longitude);
         MissionPlanner planner(home);
 
-        const auto p1 = home + geo::Offset(5, 5);
-        const auto p2 = p1 + geo::Offset(30, 0);
-        const auto p3 = p1 + geo::Offset(30, 30.1);
-        const auto p4 = p1 + geo::Offset(0, 30.1);
+        const auto p1 = home + geo::Offset(0, 0);
+        const auto p2 = p1 + geo::Offset(3, 0);
+        const auto p3 = p1 + geo::Offset(3, 3.1);
+        const auto p4 = p1 + geo::Offset(0, 3.1);
 
-        planner.plan(p1, p2, p3, p4, 5.1);
+        planner.plan(p1, p2, p3, p4, 1.1);
 
         auto waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
