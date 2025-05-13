@@ -9,6 +9,7 @@ services:
     pid: host
     volumes:
       - /dev/shm:/dev/shm
+      - /dev/ttyAMA0:/dev/ttyAMA0
     command: ["ros2", "launch", "carbodrone_mavlink", "real.launch.py"]
     restart: on-failure
 
