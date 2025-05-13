@@ -8,8 +8,8 @@ services:
     ipc: host
     pid: host
     volumes:
-      - /dev/shm:/dev/shm
-      - /dev/ttyAMA0:/dev/ttyAMA0
+      - /dev:/dev
+    privileged: true
     command: ["ros2", "launch", "carbodrone_mavlink", "real.launch.py"]
     restart: on-failure
 
@@ -22,7 +22,8 @@ services:
     ipc: host
     pid: host
     volumes:
-      - /dev/shm:/dev/shm
+      - /dev:/dev
+    privileged: true
     command: ["ros2", "launch", "carbodrone_dualtech", "main.launch.py", "use_sim:=false"]
     restart: on-failure
 
