@@ -43,7 +43,7 @@ def generate_launch_description():
                 ])
             ]),
             launch_arguments={
-                'fcu_url': 'udp://:14540@127.0.0.1:14557',
+                'fcu_url': 'serial:///dev/ttyAMA0:57600',
                 'gcs_url': '',
                 'tgt_system': '1',
                 'tgt_component': '1',
