@@ -91,12 +91,6 @@ public:
             std::bind(&MissionNode::mavros_global_position_global_callback, this, std::placeholders::_1)
         );
 
-        _mavros_altitude_sub = create_subscription<mavros_msgs::msg::Altitude>(
-            "/mavros/altitude",
-            rclcpp::SensorDataQoS(),
-            std::bind(&MissionNode::mavros_altitude_callback, this, std::placeholders::_1)
-        );
-
         _mavros_mission_waypoints_sub = create_subscription<mavros_msgs::msg::WaypointList>(
             "/mavros/mission/waypoints",
             10,
@@ -328,11 +322,6 @@ private:
         _global_position_global = global_position_global_in;
     }
 
-    void mavros_altitude_callback(const mavros_msgs::msg::Altitude::ConstSharedPtr &altitude_in)
-    {
-        _altitude = altitude_in;
-    }
-
     void mavros_mission_waypoints_callback(const mavros_msgs::msg::WaypointList::ConstSharedPtr &waypoints_in)
     {
         if (!_is_armed)
@@ -450,9 +439,6 @@ private:
 
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
     sensor_msgs::msg::NavSatFix::ConstSharedPtr _global_position_global;
-
-    rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
-    mavros_msgs::msg::Altitude::ConstSharedPtr _altitude;
 
     rclcpp::Subscription<mavros_msgs::msg::WaypointList>::SharedPtr _mavros_mission_waypoints_sub;
 

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 #include <algorithm>
+#include <limits>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -14,6 +15,7 @@
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 #include "mavros_msgs/msg/altitude.hpp"
 
@@ -55,9 +57,9 @@ public:
             "/mavros/global_position/global", rclcpp::SensorDataQoS(),
             std::bind(&RecordingNode::mavros_global_position_global_callback, this, std::placeholders::_1));
 
-        _mavros_altitude_sub = create_subscription<mavros_msgs::msg::Altitude>(
-            "/mavros/altitude", rclcpp::SensorDataQoS(),
-            std::bind(&RecordingNode::mavros_altitude_callback, this, std::placeholders::_1));
+        _mavros_rel_alt_sub = create_subscription<std_msgs::msg::Float64>(
+            "/mavros/global_position/rel_alt", rclcpp::SensorDataQoS(),
+            std::bind(&RecordingNode::mavros_rel_alt_callback, this, std::placeholders::_1));
 
         _mavros_local_position_pose_sub = create_subscription<geometry_msgs::msg::PoseStamped>(
             "/mavros/local_position/pose", rclcpp::SensorDataQoS(),
@@ -136,6 +138,22 @@ private:
         }
     }
 
+    void mavros_rel_alt_callback(const std_msgs::msg::Float64::ConstSharedPtr &rel_alt_in)
+    {
+        auto alt_msg = std::make_shared<mavros_msgs::msg::Altitude>();
+
+        alt_msg->header.stamp = this->now();
+        alt_msg->relative = static_cast<float>(rel_alt_in->data);
+
+        alt_msg->monotonic        = std::numeric_limits<float>::quiet_NaN();
+        alt_msg->amsl             = std::numeric_limits<float>::quiet_NaN();
+        alt_msg->local            = std::numeric_limits<float>::quiet_NaN();
+        alt_msg->terrain          = std::numeric_limits<float>::quiet_NaN();
+        alt_msg->bottom_clearance = std::numeric_limits<float>::quiet_NaN();
+
+        mavros_altitude_callback(alt_msg);
+    }
+
     void mavros_local_position_pose_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &local_position_pose_in)
     {
         if (!_current_image || !_current_local_position_pose)
@@ -179,7 +197,7 @@ private:
     geometry_msgs::msg::PoseStamped::ConstSharedPtr _current_local_position_pose;
 
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
-    rclcpp::Subscription<mavros_msgs::msg::Altitude>::SharedPtr _mavros_altitude_sub;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _mavros_rel_alt_sub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _mavros_local_position_pose_sub;
 
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _enable_recording_sub;
