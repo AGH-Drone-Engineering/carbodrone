@@ -20,6 +20,22 @@ def generate_launch_description():
             default_value='true',
             description='Use simulation (Gazebo) clock if true'),
 
+        IncludeLaunchDescription(
+            AnyLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('carbodrone_mavlink'),
+                    'launch', 'real.launch.py'
+                ])
+            ]),
+        ),
+
+        Node(
+            package='carbodrone_picamera',
+            executable='camera_node.py',
+            name='camera_node',
+            output='screen',
+        ),
+
         Node(
             package='carbodrone_dualtech',
             executable='mission_node',
