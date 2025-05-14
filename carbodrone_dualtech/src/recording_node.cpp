@@ -40,7 +40,7 @@ static std::string make_log_writer_dir_path()
 {
     auto now = std::chrono::system_clock::now();
     auto nsecs = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    return std::string("carbodrone_dualtech_logs_") + std::to_string(nsecs);
+    return std::string("/dualtech_logs/carbodrone_dualtech_logs_") + std::to_string(nsecs);
 }
 
 class RecordingNode : public rclcpp::Node
