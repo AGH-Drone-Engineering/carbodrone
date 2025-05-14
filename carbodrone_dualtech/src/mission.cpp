@@ -217,8 +217,17 @@ private:
 
         auto waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
-        waypoint.command = mavros_msgs::msg::CommandCode::NAV_TAKEOFF;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_WAYPOINT;
         waypoint.is_current = true;
+        waypoint.autocontinue = true;
+        waypoint.x_lat = home.lat();
+        waypoint.y_long = home.lon();
+        waypoint.z_alt = 0;
+        request->waypoints.push_back(std::move(waypoint));
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
+        waypoint.command = mavros_msgs::msg::CommandCode::NAV_TAKEOFF;
         waypoint.autocontinue = true;
         waypoint.x_lat = home.lat();
         waypoint.y_long = home.lon();
