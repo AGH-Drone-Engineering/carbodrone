@@ -1,42 +1,16 @@
 services:
-  mavlink:
-    image: carbodrone/mavlink:latest
-    build:
-      context: .
-      dockerfile: mavlink.Dockerfile
-    network_mode: host
-    ipc: host
-    pid: host
-    volumes:
-      - /dev:/dev
-    privileged: true
-    command: ["ros2", "launch", "carbodrone_mavlink", "real.launch.py"]
-    restart: on-failure
-
   dualtech:
     image: carbodrone/dualtech:latest
     build:
       context: .
-      dockerfile: dualtech.Dockerfile
+      dockerfile: Dockerfile
     network_mode: host
     ipc: host
     pid: host
     volumes:
-      - /dev:/dev
-    privileged: true
-    command: ["ros2", "launch", "carbodrone_dualtech", "main.launch.py", "use_sim:=false"]
-    restart: on-failure
-
-  picamera:
-    image: carbodrone/picamera:latest
-    build:
-      context: .
-      dockerfile: picamera.Dockerfile
-    network_mode: host
-    ipc: host
-    pid: host
-    volumes:
+      - ./dualtech_logs:/dualtech_logs
       - /dev:/dev
       - /run/udev:/run/udev:ro
     privileged: true
+    command: ["ros2", "launch", "carbodrone_dualtech", "main.launch.py", "use_sim_time:=false"]
     restart: on-failure
