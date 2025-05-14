@@ -40,12 +40,12 @@
 /**
  * The altitude at which the drone will hover above the landing pad after and before landing.
  */
-static constexpr double LANDING_PAD_HOVER_ALTITUDE = 2.0;
+static constexpr double LANDING_PAD_HOVER_ALTITUDE = 5;
 
 /**
  * The altitude at which the drone fly above the Scan Area.
  */
-static constexpr double SCAN_ALTITUDE = 2.0;
+static constexpr double SCAN_ALTITUDE = 5;
 
 /**
  * The GPS coordinates of the Scan Area corners.
