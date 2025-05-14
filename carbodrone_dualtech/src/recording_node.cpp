@@ -49,10 +49,11 @@ public:
     RecordingNode()
         : Node("recording_node")
         , _nh(std::shared_ptr<RecordingNode>(this, [](auto *) {}))
-        , _it(_nh)
-        , _image_sub(
-              _it.subscribe("/camera/image", 1, std::bind(&RecordingNode::image_callback, this, std::placeholders::_1)))
     {
+        _image_sub = create_subscription<sensor_msgs::msg::Image>(
+            "/camera/image", rclcpp::SensorDataQoS(),
+            std::bind(&RecordingNode::image_callback, this, std::placeholders::_1));
+
         _mavros_global_position_global_sub = create_subscription<sensor_msgs::msg::NavSatFix>(
             "/mavros/global_position/global", rclcpp::SensorDataQoS(),
             std::bind(&RecordingNode::mavros_global_position_global_callback, this, std::placeholders::_1));
@@ -193,14 +194,12 @@ private:
 
     rclcpp::Node::SharedPtr _nh;
 
-    image_transport::ImageTransport _it;
-    image_transport::Subscriber _image_sub;
-
     sensor_msgs::msg::Image::ConstSharedPtr _current_image;
     sensor_msgs::msg::NavSatFix::ConstSharedPtr _current_global_position_global;
     mavros_msgs::msg::Altitude::ConstSharedPtr _current_altitude;
     geometry_msgs::msg::PoseStamped::ConstSharedPtr _current_local_position_pose;
 
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _image_sub;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _mavros_rel_alt_sub;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _mavros_local_position_pose_sub;

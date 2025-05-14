@@ -72,13 +72,7 @@ public:
     MissionNode()
         : StateMachineNode("mission_node")
         , _nh(std::shared_ptr<MissionNode>(this, [](auto*){}))
-        , _it(_nh)
-        , _image_sub(_it.subscribe("/camera/image", 1, std::bind(&MissionNode::image_callback, this, std::placeholders::_1)))
     {
-        _tf_buf = std::make_unique<tf2_ros::Buffer>(get_clock());
-        _tf_listener = std::make_unique<tf2_ros::TransformListener>(*_tf_buf);
-        _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
-
         _mavros_state_sub = create_subscription<mavros_msgs::msg::State>(
             "/mavros/state",
             10,
@@ -361,87 +355,7 @@ private:
         }
     }
 
-    void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
-    {
-        _current_image = img_in;
-    }
-
-    std::unique_ptr<image_geometry::PinholeCameraModel> build_camera_model(const sensor_msgs::msg::Image::ConstSharedPtr &img_in)
-    {
-        auto img_ptr = cv_bridge::toCvShare(img_in, "bgr8");
-        const auto &img = img_ptr->image;
-
-        double img_cx = img.cols * 0.5;
-        double img_cy = img.rows * 0.5;
-
-        sensor_msgs::msg::CameraInfo cam_info;
-        cam_info.header = img_in->header;
-        cam_info.height = img.rows;
-        cam_info.width = img.cols;
-        cam_info.distortion_model = "plumb_bob";
-
-        cam_info.d.resize(5);
-        cam_info.d[0] = 0.0;
-        cam_info.d[1] = 0.0;
-        cam_info.d[2] = 0.0;
-        cam_info.d[3] = 0.0;
-        cam_info.d[4] = 0.0;
-
-        cam_info.k[0] = CAMERA_FOCAL_LENGTH_PX;
-        cam_info.k[1] = 0.0;
-        cam_info.k[2] = img_cx;
-        cam_info.k[3] = 0.0;
-        cam_info.k[4] = CAMERA_FOCAL_LENGTH_PX;
-        cam_info.k[5] = img_cy;
-        cam_info.k[6] = 0.0;
-        cam_info.k[7] = 0.0;
-        cam_info.k[8] = 1.0;
-
-        cam_info.r[0] = 1.0;
-        cam_info.r[1] = 0.0;
-        cam_info.r[2] = 0.0;
-        cam_info.r[3] = 0.0;
-        cam_info.r[4] = 1.0;
-        cam_info.r[5] = 0.0;
-        cam_info.r[6] = 0.0;
-        cam_info.r[7] = 0.0;
-        cam_info.r[8] = 1.0;
-
-        cam_info.p[0] = CAMERA_FOCAL_LENGTH_PX;
-        cam_info.p[1] = 0.0;
-        cam_info.p[2] = img_cx;
-        cam_info.p[3] = 0.0;
-        cam_info.p[4] = 0.0;
-        cam_info.p[5] = CAMERA_FOCAL_LENGTH_PX;
-        cam_info.p[6] = img_cy;
-        cam_info.p[7] = 0.0;
-        cam_info.p[8] = 0.0;
-        cam_info.p[9] = 0.0;
-        cam_info.p[10] = 1.0;
-        cam_info.p[11] = 0.0;
-
-        cam_info.binning_x = 0;
-        cam_info.binning_y = 0;
-        cam_info.roi.x_offset = 0;
-        cam_info.roi.y_offset = 0;
-        cam_info.roi.height = 0;
-        cam_info.roi.width = 0;
-        cam_info.roi.do_rectify = false;
-
-        auto cam_model = std::make_unique<image_geometry::PinholeCameraModel>();
-        cam_model->fromCameraInfo(cam_info);
-        return cam_model;
-    }
-
-    std::unique_ptr<tf2_ros::Buffer>               _tf_buf;
-    std::unique_ptr<tf2_ros::TransformListener>    _tf_listener;
-    std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
-
     rclcpp::Node::SharedPtr _nh;
-
-    image_transport::ImageTransport _it;
-    image_transport::Subscriber _image_sub;
-    sensor_msgs::msg::Image::ConstSharedPtr _current_image;
 
     rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr _mavros_state_sub;
     bool _is_armed = false;
