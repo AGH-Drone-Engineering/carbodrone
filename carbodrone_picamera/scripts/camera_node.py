@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rclpy
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, qos_profile_system_default
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 from cv_bridge import CvBridge
@@ -16,9 +16,9 @@ CAMERA_FOCAL_LENGTH_PX = 1260.0
 class CameraNode(Node):
     def __init__(self):
         super().__init__('camera_node')
-        self.publisher = self.create_publisher(Image, 'camera/image', qos_profile_sensor_data)
-        self.compressed_publisher = self.create_publisher(CompressedImage, 'camera/image/compressed', qos_profile_sensor_data)
-        self.camera_info_publisher = self.create_publisher(CameraInfo, 'camera/camera_info', qos_profile_sensor_data)
+        self.publisher = self.create_publisher(Image, 'camera/image', qos_profile_system_default)
+        self.compressed_publisher = self.create_publisher(CompressedImage, 'camera/image/compressed', qos_profile_system_default)
+        self.camera_info_publisher = self.create_publisher(CameraInfo, 'camera/camera_info', qos_profile_system_default)
         self.cv_bridge = CvBridge()
 
         self.picam2 = Picamera2()
