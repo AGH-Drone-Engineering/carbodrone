@@ -87,6 +87,11 @@ private:
             if (time_diff > 0.5)
             {
                 RCLCPP_WARN(get_logger(), "Image metadata is too old: %f s", time_diff);
+            }
+
+            if (time_diff > 5.0)
+            {
+                RCLCPP_ERROR(get_logger(), "Image metadata is waaaaaay too old: %f s", time_diff);
                 return;
             }
 
