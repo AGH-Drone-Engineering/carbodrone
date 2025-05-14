@@ -339,13 +339,13 @@ private:
         }
 
         int num_waypoints = waypoints_in->waypoints.size();
-        if (num_waypoints < 5)
+        if (num_waypoints < 6)
         {
-            // Minimum waypoints: takeoff, first goto, second goto, return, land
+            // Minimum waypoints: fake, takeoff, first goto, second goto, return, land
             return;
         }
 
-        int second_goto_idx = 2;
+        int second_goto_idx = 3;
         int return_idx = num_waypoints - 2;
 
         auto second_goto = waypoints_in->waypoints[second_goto_idx];
