@@ -47,6 +47,10 @@ static constexpr double LANDING_PAD_HOVER_ALTITUDE = 5;
  */
 static constexpr double SCAN_ALTITUDE = 5;
 
+static constexpr double MISSION_GOTO_SPEED_MS = 5;
+
+static constexpr double MISSION_SCAN_SPEED_MS = 1;
+
 /**
  * The GPS coordinates of the Scan Area corners.
  */

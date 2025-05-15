@@ -228,6 +228,16 @@ private:
         waypoint.z_alt = LANDING_PAD_HOVER_ALTITUDE;
         request->waypoints.push_back(std::move(waypoint));
 
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_MISSION;
+        waypoint.command = mavros_msgs::msg::CommandCode::DO_CHANGE_SPEED;
+        waypoint.autocontinue = true;
+        waypoint.param1 = 1;
+        waypoint.param2 = MISSION_GOTO_SPEED_MS;
+        waypoint.param3 = -1;
+        request->waypoints.push_back(std::move(waypoint));
+
+        int wp_i = 0;
         for (const auto &point : planner.path())
         {
             waypoint = mavros_msgs::msg::Waypoint();
@@ -238,7 +248,29 @@ private:
             waypoint.y_long = point.lon();
             waypoint.z_alt = SCAN_ALTITUDE;
             request->waypoints.push_back(std::move(waypoint));
+
+            if (wp_i == 0)
+            {
+                waypoint = mavros_msgs::msg::Waypoint();
+                waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_MISSION;
+                waypoint.command = mavros_msgs::msg::CommandCode::DO_CHANGE_SPEED;
+                waypoint.autocontinue = true;
+                waypoint.param1 = 1;
+                waypoint.param2 = MISSION_SCAN_SPEED_MS;
+                waypoint.param3 = -1;
+                request->waypoints.push_back(std::move(waypoint));
+            }
+            wp_i++;
         }
+
+        waypoint = mavros_msgs::msg::Waypoint();
+        waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_MISSION;
+        waypoint.command = mavros_msgs::msg::CommandCode::DO_CHANGE_SPEED;
+        waypoint.autocontinue = true;
+        waypoint.param1 = 1;
+        waypoint.param2 = MISSION_GOTO_SPEED_MS;
+        waypoint.param3 = -1;
+        request->waypoints.push_back(std::move(waypoint));
 
         waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
