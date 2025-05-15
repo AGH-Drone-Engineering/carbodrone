@@ -84,7 +84,7 @@ public:
             if (!is_initialized_)
             {
                 int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G'); // MJPG codec
-                double fps = 30.0;
+                double fps = 10.0;
                 video_writer_.open((dir_path_ / "video.avi").string(), fourcc, fps, cv_image.size(), true);
                 if (!video_writer_.isOpened())
                 {
