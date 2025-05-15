@@ -185,13 +185,18 @@
           <geometry>
             <plane>
               <normal>0 0 1</normal>
-              <size>100 100</size>
+              <size>50 50</size>
             </plane>
           </geometry>
           <material>
             <ambient>0.118 0.275 0.118 1</ambient>
             <diffuse>0.235 0.588 0.235 1</diffuse>
             <specular>0.078 0.157 0.078 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/map.jpg</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 -0 0</pose>
@@ -246,18 +251,23 @@
 
 
     <model name='field_1'>
-      <pose>-3 -3 0.001 0 0 0</pose>
+      <pose>0 0 0.001 0 0 43241</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_a_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -268,18 +278,23 @@
     </model>
 
     <model name='field_2'>
-      <pose>0 -3 0.001 0 0 0</pose>
+      <pose>5 0 0.001 0 0 152134</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_b_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -290,18 +305,23 @@
     </model>
 
     <model name='field_3'>
-      <pose>3 -3 0.001 0 0 0</pose>
+      <pose>10 0 0.001 0 0 163433</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_c_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -312,18 +332,23 @@
     </model>
 
     <model name='field_4'>
-      <pose>-3 0 0.001 0 0 0</pose>
+      <pose>0 5 0.001 0 0 5476234</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_d_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -334,18 +359,23 @@
     </model>
 
     <model name='field_5'>
-      <pose>0 0 0.001 0 0 0</pose>
+      <pose>5 5 0.001 0 0 87941564</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_e_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -356,18 +386,23 @@
     </model>
 
     <model name='field_6'>
-      <pose>3 0 0.001 0 0 0</pose>
+      <pose>10 5 0.001 0 0 67135453</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_f_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -378,18 +413,23 @@
     </model>
 
     <model name='field_7'>
-      <pose>-3 3 0.001 0 0 0</pose>
+      <pose>0 10 0.001 0 0 1377435</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_g_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -400,18 +440,23 @@
     </model>
 
     <model name='field_8'>
-      <pose>0 3 0.001 0 0 0</pose>
+      <pose>5 10 0.001 0 0 16876321</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_h_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -422,18 +467,23 @@
     </model>
 
     <model name='field_9'>
-      <pose>3 3 0.001 0 0 0</pose>
+      <pose>10 10 0.001 0 0 81675314</pose>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <box>
-              <size>1 1 0.001</size>
+              <size>0.6667 0.6667 0.001</size>
             </box>
           </geometry>
           <material>
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/qr_i_box.png</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
@@ -456,6 +506,11 @@
             <ambient>1 1 1 1</ambient>
             <diffuse>1 1 1 1</diffuse>
             <specular>1 1 1 1</specular>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/carbon/ros2_ws/src/carbodrone/carbodrone_dualtech/assets/pad.jpg</albedo_map>
+              </metal>
+            </pbr>
           </material>
         </visual>
         <pose>0 0 0 0 0 0</pose>
