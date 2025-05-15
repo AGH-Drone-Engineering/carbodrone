@@ -93,16 +93,17 @@ private:
             if (time_diff > 2.0)
             {
                 RCLCPP_ERROR(get_logger(), "Image metadata is waaaaaay too old: %f s", time_diff);
-                return;
             }
-
-            LogWriter::Metadata metadata(
-                _current_image,
-                _current_global_position_global,
-                _current_altitude,
-                _current_local_position_pose
-            );
-            _log_writer->write(_current_image, metadata);
+            else
+            {
+                LogWriter::Metadata metadata(
+                    _current_image,
+                    _current_global_position_global,
+                    _current_altitude,
+                    _current_local_position_pose
+                );
+                _log_writer->write(_current_image, metadata);
+            }
         }
         _current_image = img_in;
     }
