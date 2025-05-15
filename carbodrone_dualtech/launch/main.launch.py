@@ -2,9 +2,10 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, GroupAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
 from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.conditions import IfCondition, UnlessCondition
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -20,20 +21,24 @@ def generate_launch_description():
             default_value='true',
             description='Use simulation (Gazebo) clock if true'),
 
-        IncludeLaunchDescription(
-            AnyLaunchDescriptionSource([
-                PathJoinSubstitution([
-                    FindPackageShare('carbodrone_mavlink'),
-                    'launch', 'real.launch.py'
-                ])
-            ]),
-        ),
-
-        Node(
-            package='carbodrone_picamera',
-            executable='camera_node.py',
-            name='camera_node',
-            output='screen',
+        GroupAction(
+            actions=[
+                Node(
+                    package='carbodrone_picamera',
+                    executable='camera_node.py',
+                    name='camera_node',
+                    output='screen',
+                ),
+                IncludeLaunchDescription(
+                    AnyLaunchDescriptionSource([
+                        PathJoinSubstitution([
+                            FindPackageShare('carbodrone_mavlink'),
+                            'launch', 'real.launch.py'
+                        ])
+                    ]),
+                ),
+            ],
+            condition=UnlessCondition(use_sim_time),
         ),
 
         Node(
