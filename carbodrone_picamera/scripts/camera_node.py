@@ -8,9 +8,33 @@ from cv_bridge import CvBridge
 from picamera2 import Picamera2
 import threading
 import cv2
+import math
 
 
-CAMERA_FOCAL_LENGTH_PX = 1260.0
+def intrinsics_from_hfov(
+    hfov_deg: float,
+    resolution: tuple[int, int]
+) -> tuple[float, float, float, float]:
+    width, height = resolution
+
+    # convert FOV to radians
+    hfov_rad = math.radians(hfov_deg)
+
+    # fx from horizontal FOV
+    fx = width / (2.0 * math.tan(hfov_rad / 2.0))
+
+    # derive vertical FOV from aspect ratio, then fy
+    vfov_rad = 2.0 * math.atan((height / width) * math.tan(hfov_rad / 2.0))
+    fy = height / (2.0 * math.tan(vfov_rad / 2.0))
+
+    # principal point (centre of the image)
+    cx = width / 2.0
+    cy = height / 2.0
+
+    return fx, fy, cx, cy
+
+
+CAMERA_FOV_DEG = 1.204 * 180 / math.pi
 
 
 class CameraNode(Node):
@@ -23,7 +47,7 @@ class CameraNode(Node):
 
         self.picam2 = Picamera2()
         video_config = self.picam2.create_video_configuration(
-            main={"size": (1920, 1080), "format": "BGR888"},
+            main={"size": (3280, 2464), "format": "BGR888"},
             raw={"size": (3280, 2464)},
             controls={"FrameRate": 10, "ExposureTime": 10000},
         )
@@ -41,8 +65,8 @@ class CameraNode(Node):
         # Get image dimensions from camera configuration
         width = self.picam2.camera_config["main"]["size"][0]
         height = self.picam2.camera_config["main"]["size"][1]
-        img_cx = width * 0.5
-        img_cy = height * 0.5
+
+        fx, fy, cx, cy = intrinsics_from_hfov(CAMERA_FOV_DEG, (width, height))
 
         camera_info = CameraInfo()
         camera_info.header.stamp = self.get_clock().now().to_msg()
@@ -56,8 +80,8 @@ class CameraNode(Node):
 
         # Camera matrix (K)
         camera_info.k = [
-            CAMERA_FOCAL_LENGTH_PX, 0.0, img_cx,
-            0.0, CAMERA_FOCAL_LENGTH_PX, img_cy,
+            fx, 0.0, cx,
+            0.0, fy, cy,
             0.0, 0.0, 1.0
         ]
 
@@ -70,8 +94,8 @@ class CameraNode(Node):
 
         # Projection matrix (P)
         camera_info.p = [
-            CAMERA_FOCAL_LENGTH_PX, 0.0, img_cx, 0.0,
-            0.0, CAMERA_FOCAL_LENGTH_PX, img_cy, 0.0,
+            fx, 0.0, cx, 0.0,
+            0.0, fy, cy, 0.0,
             0.0, 0.0, 1.0, 0.0
         ]
 
