@@ -206,10 +206,10 @@ private:
         const geo::Point home(_global_position_global->latitude, _global_position_global->longitude);
         MissionPlanner planner(home);
 
-        const auto p1 = home + geo::Offset(0, 0);
-        const auto p2 = p1 + geo::Offset(10, 0);
-        const auto p3 = p1 + geo::Offset(10, 10.1);
-        const auto p4 = p1 + geo::Offset(0, 10.1);
+        const geo::Point p1(50.003556, 21.106242);
+        const geo::Point p2(50.003371, 21.106206);
+        const geo::Point p3(50.003373, 21.106464);
+        const geo::Point p4(50.003551, 21.106430);
 
         planner.plan(p1, p2, p3, p4, 5.1);
 
