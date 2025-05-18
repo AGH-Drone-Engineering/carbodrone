@@ -211,7 +211,7 @@ private:
         const geo::Point p3(50.003373, 21.106464);
         const geo::Point p4(50.003551, 21.106430);
 
-        planner.plan(p1, p2, p3, p4, 5.1);
+        planner.plan(p1, p2, p3, p4, 2.0);
 
         auto waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
