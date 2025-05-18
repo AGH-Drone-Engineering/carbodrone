@@ -49,7 +49,7 @@ class CameraNode(Node):
         video_config = self.picam2.create_video_configuration(
             main={"size": (3280, 2464), "format": "RGB888"},
             raw={"size": (3280, 2464)},
-            controls={"FrameRate": 10, "ExposureTime": 5000},
+            controls={"FrameRate": 10, "ExposureTime": 500},
         )
         self.picam2.configure(video_config)
         self.picam2.start()
