@@ -91,12 +91,12 @@ private:
             });
             if (time_diff > 0.5)
             {
-                RCLCPP_WARN(get_logger(), "Image metadata is too old: %f s", time_diff);
+                RCLCPP_WARN(get_logger(), "Image metadata is too old (GPS, alt, pose): %f %f %f s", abs_time_diff(time_img, time_gps), abs_time_diff(time_img, time_alt), abs_time_diff(time_img, time_pose));
             }
 
             if (time_diff > 2.0)
             {
-                RCLCPP_ERROR(get_logger(), "Image metadata is waaaaaay too old: %f s", time_diff);
+                RCLCPP_ERROR(get_logger(), "Image metadata is waaaaaay too old (GPS, alt, pose): %f %f %f s", abs_time_diff(time_img, time_gps), abs_time_diff(time_img, time_alt), abs_time_diff(time_img, time_pose));
             }
             else
             {
