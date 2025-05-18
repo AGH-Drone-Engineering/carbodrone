@@ -121,7 +121,6 @@ private:
             break;
 
         case MissionState::DO_SEND_MISSION:
-            do_set_global_position_rate();
             do_send_mission();
             change_state_after_condition(MissionState::DO_SEND_MISSION_DELAY, [this](){
                 return _mavros_mission_push_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
@@ -326,23 +325,6 @@ private:
         request->longitude = NAN;
         request->yaw = NAN;
         _mavros_command_land_srv->async_send_request(request);
-    }
-
-    void do_set_global_position_rate()
-    {
-        RCLCPP_INFO(get_logger(), "[CMD] Setting GLOBAL_POSITION_INT rate");
-
-        auto req  = std::make_shared<mavros_msgs::srv::CommandLong::Request>();
-        req->command = mavros_msgs::msg::CommandCode::SET_MESSAGE_INTERVAL;
-        req->param1 = 33;
-        req->param2 = 33333;
-        req->param3 = 0;
-        req->param4 = 0;
-        req->param5 = 0;
-        req->param6 = 0;
-        req->param7 = 0;
-
-        _mavros_command_srv->async_send_request(req);
     }
 
     void do_enable_recording()

@@ -18,6 +18,7 @@
 #include "std_msgs/msg/float64.hpp"
 
 #include "mavros_msgs/msg/altitude.hpp"
+#include "mavros_msgs/srv/message_interval.hpp"
 
 #include "log_writer.hpp"
 
@@ -69,6 +70,9 @@ public:
         _enable_recording_sub = create_subscription<std_msgs::msg::Bool>(
             "enable_recording", 10,
             std::bind(&RecordingNode::enable_recording_callback, this, std::placeholders::_1));
+
+        _mavros_message_interval_srv = create_client<mavros_msgs::srv::MessageInterval>(
+            "/mavros/set_message_interval");
     }
 
 private:
@@ -179,11 +183,27 @@ private:
         }
     }
 
+    void do_set_message_rates()
+    {
+        RCLCPP_INFO(get_logger(), "Setting message rates");
+
+        auto request = std::make_shared<mavros_msgs::srv::MessageInterval::Request>();
+        request->message_id = 33;
+        request->message_rate = 10;
+        _mavros_message_interval_srv->async_send_request(request);
+
+        request = std::make_shared<mavros_msgs::srv::MessageInterval::Request>();
+        request->message_id = 32;
+        request->message_rate = 10;
+        _mavros_message_interval_srv->async_send_request(request);
+    }
+
     void enable_recording_callback(const std_msgs::msg::Bool::ConstSharedPtr &enable_recording_in)
     {
         if (!_log_writer && enable_recording_in->data)
         {
             RCLCPP_INFO(get_logger(), "Recording enabled");
+            do_set_message_rates();
             _log_writer = std::make_unique<LogWriter>(make_log_writer_dir_path());
         }
         else if (_log_writer && !enable_recording_in->data)
@@ -206,6 +226,8 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _mavros_local_position_pose_sub;
 
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _enable_recording_sub;
+
+    rclcpp::Client<mavros_msgs::srv::MessageInterval>::SharedPtr _mavros_message_interval_srv;
 
     std::unique_ptr<LogWriter> _log_writer;
 };
