@@ -110,11 +110,16 @@ private:
             }
         }
         _current_image = img_in;
+        _current_global_position_global = _latest_global_position_global;
+        _current_altitude = _latest_altitude;
+        _current_local_position_pose = _latest_local_position_pose;
     }
 
     void
     mavros_global_position_global_callback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr &global_position_global_in)
     {
+        _latest_global_position_global = global_position_global_in;
+
         if (!_current_image || !_current_global_position_global)
         {
             _current_global_position_global = global_position_global_in;
@@ -133,6 +138,8 @@ private:
 
     void mavros_altitude_callback(const mavros_msgs::msg::Altitude::ConstSharedPtr &altitude_in)
     {
+        _latest_altitude = altitude_in;
+
         if (!_current_image || !_current_altitude)
         {
             _current_altitude = altitude_in;
@@ -167,6 +174,8 @@ private:
 
     void mavros_local_position_pose_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &local_position_pose_in)
     {
+        _latest_local_position_pose = local_position_pose_in;
+
         if (!_current_image || !_current_local_position_pose)
         {
             _current_local_position_pose = local_position_pose_in;
@@ -219,6 +228,10 @@ private:
     sensor_msgs::msg::NavSatFix::ConstSharedPtr _current_global_position_global;
     mavros_msgs::msg::Altitude::ConstSharedPtr _current_altitude;
     geometry_msgs::msg::PoseStamped::ConstSharedPtr _current_local_position_pose;
+
+    sensor_msgs::msg::NavSatFix::ConstSharedPtr _latest_global_position_global;
+    mavros_msgs::msg::Altitude::ConstSharedPtr _latest_altitude;
+    geometry_msgs::msg::PoseStamped::ConstSharedPtr _latest_local_position_pose;
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _image_sub;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
