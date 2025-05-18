@@ -174,8 +174,12 @@ private:
         }
 
         case MissionState::DONE:
-            RCLCPP_INFO(get_logger(), "Mission completed");
-            rclcpp::shutdown();
+            if (!_is_armed)
+            {
+                RCLCPP_INFO(get_logger(), "Reinitializing");
+                do_disable_recording();
+                change_state(MissionState::INIT);
+            }
             break;
 
         case MissionState::NOOP:
