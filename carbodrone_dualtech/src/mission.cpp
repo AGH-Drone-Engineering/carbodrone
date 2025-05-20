@@ -206,12 +206,12 @@ private:
         const geo::Point home(_global_position_global->latitude, _global_position_global->longitude);
         MissionPlanner planner(home);
 
-        const geo::Point p1(50.003556, 21.106242);
-        const geo::Point p2(50.003371, 21.106206);
-        const geo::Point p3(50.003373, 21.106464);
-        const geo::Point p4(50.003551, 21.106430);
+        const geo::Point p1(50.068102,19.904584);
+        const geo::Point p2(50.068306,19.904638);
+        const geo::Point p3(50.068371,19.904174);
+        const geo::Point p4(50.068165,19.904099);
 
-        planner.plan(p1, p2, p3, p4, 2.0);
+        planner.plan(p1, p2, p3, p4, SCAN_ALTITUDE * std::tan(64.7 * 0.5 / 180.0 * M_PI));
 
         auto waypoint = mavros_msgs::msg::Waypoint();
         waypoint.frame = mavros_msgs::msg::Waypoint::FRAME_GLOBAL_REL_ALT;
