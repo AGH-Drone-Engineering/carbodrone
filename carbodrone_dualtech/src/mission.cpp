@@ -71,7 +71,6 @@ class MissionNode : public StateMachineNode
 public:
     MissionNode()
         : StateMachineNode("mission_node")
-        , _nh(std::shared_ptr<MissionNode>(this, [](auto*){}))
     {
         _mavros_state_sub = create_subscription<mavros_msgs::msg::State>(
             "/mavros/state",
@@ -83,12 +82,6 @@ public:
             "/mavros/global_position/global",
             rclcpp::SensorDataQoS(),
             std::bind(&MissionNode::mavros_global_position_global_callback, this, std::placeholders::_1)
-        );
-
-        _mavros_mission_waypoints_sub = create_subscription<mavros_msgs::msg::WaypointList>(
-            "/mavros/mission/waypoints",
-            10,
-            std::bind(&MissionNode::mavros_mission_waypoints_callback, this, std::placeholders::_1)
         );
 
         _enable_recording_pub = create_publisher<std_msgs::msg::Bool>("enable_recording", 10);
@@ -167,7 +160,6 @@ private:
             if (!_is_armed)
             {
                 RCLCPP_INFO(get_logger(), "Vehicle disarmed");
-                do_disable_recording();
                 change_state(MissionState::DONE);
             }
             break;
@@ -177,7 +169,6 @@ private:
             if (!_is_armed)
             {
                 RCLCPP_INFO(get_logger(), "Reinitializing");
-                do_disable_recording();
                 change_state(MissionState::INIT);
             }
             break;
@@ -348,10 +339,12 @@ private:
         if (!_is_armed && state_in->armed)
         {
             RCLCPP_INFO(get_logger(), "[MAV] Vehicle armed");
+            do_enable_recording();
         }
         else if (_is_armed && !state_in->armed)
         {
             RCLCPP_INFO(get_logger(), "[MAV] Vehicle disarmed");
+            do_disable_recording();
         }
         _is_armed = state_in->armed;
     }
@@ -361,45 +354,11 @@ private:
         _global_position_global = global_position_global_in;
     }
 
-    void mavros_mission_waypoints_callback(const mavros_msgs::msg::WaypointList::ConstSharedPtr &waypoints_in)
-    {
-        if (!_is_armed)
-        {
-            return;
-        }
-
-        int num_waypoints = waypoints_in->waypoints.size();
-        if (num_waypoints < 9)
-        {
-            // Minimum waypoints: fake, takeoff, speed, 1goto, speed, 2goto, speed, return, land
-            return;
-        }
-
-        int second_goto_idx = 5;
-        int return_idx = num_waypoints - 2;
-
-        auto second_goto = waypoints_in->waypoints[second_goto_idx];
-        auto return_wp = waypoints_in->waypoints[return_idx];
-
-        if (second_goto.is_current)
-        {
-            do_enable_recording();
-        }
-        else if (return_wp.is_current)
-        {
-            do_disable_recording();
-        }
-    }
-
-    rclcpp::Node::SharedPtr _nh;
-
     rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr _mavros_state_sub;
     bool _is_armed = false;
 
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr _mavros_global_position_global_sub;
     sensor_msgs::msg::NavSatFix::ConstSharedPtr _global_position_global;
-
-    rclcpp::Subscription<mavros_msgs::msg::WaypointList>::SharedPtr _mavros_mission_waypoints_sub;
 
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _enable_recording_pub;
 
